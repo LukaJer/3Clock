@@ -1,4 +1,4 @@
-MCU=  #TBD
+MCU=atmega328p
 CC=avr-gcc
 OBJCOPY=avr-objcopy
 AVRDUDE=avrdude
@@ -6,7 +6,7 @@ CFLAGS=-g -Wall -Os #-mcall-prologues
 PRGRM=stk500v2
 	
 all:
-	${CC} -mmcu=${MCU} ${CFLAGS} -o main.o main.c
+	${CC} -mmcu=${MCU} ${CFLAGS} -o main.o clock.c
 	${OBJCOPY} -j .text -j .data -O ihex main.o main.hex	
 	avr-size --mcu=${MCU} -C main.o
 
