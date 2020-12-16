@@ -16,6 +16,12 @@ ISR(INT0_vect) //PPS
     // Diff between GPS_Time and Internal_Time
 }
 
+ISR(USART_RX_vect) //GPS transmitts data
+{
+char rec_char=UDR0;
+
+}
+
 double getTemp() //REads and calculates Temperature
 {
     //ADMUX = (ADMUX & ~(0x1F)) | (0 & 0x1F); //A0 as input Needed?
@@ -45,12 +51,12 @@ void initADC()
     (void)ADCW; //Dump Dummy ADCW
 }
 
-void GPS_Time(){
-
+void GPS_Time()
+{
 }
 
-void Internal_Time(){
-
+void Internal_Time()
+{
 }
 
 int main()
@@ -64,6 +70,23 @@ int main()
     stdin = &uart_input;
     PCICR = (1 << INT0);
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
-    sei(); //Enable Interrupts
+    sei();                               //Enable Interrupts
     return 0;
+}
+
+char *uart_getString(uint8_t length) //Reads String=Char[length] from UART; returns a pointer
+{
+    uint8_t nextChar;
+    uint8_t charlength = 0;
+    char uString[length];
+    char *ptrString;
+    ptrString = uString;
+    do
+    {
+        nextChar = getchar();
+        *ptrString++ = nextChar;
+        charlength++;
+    } while (nextChar != '\n' && charlength < length - 1);
+    *ptrString = '\0';
+    return uString;
 }
