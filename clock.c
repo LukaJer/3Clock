@@ -19,22 +19,26 @@ ISR(INT0_vect) //PPS
 ISR(USART_RX_vect) //GPS transmitts data
 {
 char rec_char=UDR0;
-
+//TODO GPS Decode and Time Storage
 }
 
-double getTemp() //REads and calculates Temperature
+double getTemp() //Reads and calculates Temperature
 {
-    //ADMUX = (ADMUX & ~(0x1F)) | (0 & 0x1F); //A0 as input Needed?
+    //ADC is 10bit
+    /*
+    Needed  or already set in initADC()?
+    ADMUX = (ADMUX & ~(0x1F)) | (0 & 0x1F); //A0 as input 
+    */
     ADCSRA |= (1 << ADSC);       // Read ADC
     while (ADCSRA & (1 << ADSC)) // Convert and wait
     {
     }
-    //TODO: ADC to Temp conversion
     /*
-    ADCW*NTC_Coeff
+    measurement is stored as (unit16_t) ADCW
     */
+    //TODO: ADC to Temp conversion
 
-    return 0; //
+    return 0;
 }
 
 void initADC()
@@ -74,6 +78,8 @@ int main()
     return 0;
 }
 
+
+//Might not be needed
 char *uart_getString(uint8_t length) //Reads String=Char[length] from UART; returns a pointer
 {
     uint8_t nextChar;
