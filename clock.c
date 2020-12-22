@@ -20,6 +20,7 @@ ISR(USART_RX_vect) //GPS transmitts data
 {
 char rec_char=UDR0;
 //TODO GPS Decode and Time Storage
+
 }
 
 double getTemp() //Reads and calculates Temperature
@@ -74,7 +75,15 @@ int main()
     stdin = &uart_input;
     PCICR = (1 << INT0);
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
-    sei();                               //Enable Interrupts
+    sei();   //Enable Interrupts
+    puts("Hello World!");
+    _delay_ms(10);
+    while (1)
+    {
+      puts("Enter String: ");
+      input= getchar();
+      printf("You wrote %c\n", input);
+    }                     
     return 0;
 }
 
