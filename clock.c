@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include "uart.h"
 #include <avr/interrupt.h>
+#include <string.h>
 
 ISR(INT0_vect) //PPS
 {
@@ -64,6 +65,20 @@ void Internal_Time()
 {
 }
 
+const char* uart_getString(uint8_t length) //Reads String=Char[length] from UART; returns a pointer
+{
+    uint8_t charlength = 0;
+    char uString[length];
+    do
+    {
+        uString[charlength]=getchar();
+        charlength++;
+    } while (uString[charlength-1] != '\n' && charlength < length);
+    uString[charlength+1] = '\0';
+    const char *String=uString;
+    return String;
+}
+
 int main()
 {
     // puts("String") for output
@@ -78,30 +93,12 @@ int main()
     sei();   //Enable Interrupts
     puts("Hello World!");
     _delay_ms(10);
+    const char *input;
     while (1)
     {
       puts("Enter String: ");
-      input= getchar();
-      printf("You wrote %c\n", input);
+      input=uart_getString(4);
+      printf("You wrote %s\n", input); 
     }                     
     return 0;
-}
-
-
-//Might not be needed
-char *uart_getString(uint8_t length) //Reads String=Char[length] from UART; returns a pointer
-{
-    uint8_t nextChar;
-    uint8_t charlength = 0;
-    char uString[length];
-    char *ptrString;
-    ptrString = uString;
-    do
-    {
-        nextChar = getchar();
-        *ptrString++ = nextChar;
-        charlength++;
-    } while (nextChar != '\n' && charlength < length - 1);
-    *ptrString = '\0';
-    return uString;
 }
