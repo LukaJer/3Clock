@@ -10,18 +10,54 @@
 #include "uart.h"
 #include <avr/interrupt.h>
 #include <string.h>
+#include <time.h> 
+
+bool IsGGA = false, Time_Set=false; //technicially GA,
+int GGA_Index;
+char GPS_Data[10];
+char GPS_Buffer[3];
+uint8_t time[8]; //HH:MM:SS:MSMS
 
 ISR(INT0_vect) //PPS
 {
-    // user code here
+    // user code her
     // Diff between GPS_Time and Internal_Time
 }
 
 ISR(USART_RX_vect) //GPS transmitts data
 {
-char rec_char=UDR0;
-//TODO GPS Decode and Time Storage
+    char rec_char = UDR0;
+    cli();
+    if (GGA_Index > 7) //Time data finished
+    {
+        if (!Time_Set) //Init Time
+        {
+        strncpy(time,GPS_Data, 8);
 
+        }
+        IsGGA = false;
+    }
+    if (IsGGA) //checks for GA,
+    {
+        GPS_Data[GGA_Index] = rec_char; // write directly to time?
+        GGA_Index++;
+    }
+    else
+    {
+        GPS_Buffer[0] = GPS_Buffer[1];
+        GPS_Buffer[1] = GPS_Buffer[2];
+        GPS_Buffer[2] = rec_char;
+        if (GPS_Buffer[0] == 'G' && GPS_Buffer[1] == 'A' && GPS_Buffer[2] == ',')
+        {
+            IsGGA = true;
+            GGA_Index = 0;
+            GPS_Buffer[0] = 0;
+            GPS_Buffer[1] = 0;
+            GPS_Buffer[2] = 0;
+        }
+    }
+
+    //TODO GPS Decode and Time Storage
 }
 
 double getTemp() //Reads and calculates Temperature
@@ -65,17 +101,17 @@ void Internal_Time()
 {
 }
 
-const char* uart_getString(uint8_t length) //Reads String=Char[length] from UART; returns a pointer
+const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART; returns a pointer
 {
     uint8_t charlength = 0;
     char uString[length];
     do
     {
-        uString[charlength]=getchar();
+        uString[charlength] = getchar();
         charlength++;
-    } while (uString[charlength-1] != '\n' && charlength < length);
-    uString[charlength+1] = '\0';
-    const char *String=uString;
+    } while (uString[charlength - 1] != '\n' && charlength < length);
+    uString[charlength + 1] = '\0';
+    const char *String = uString;
     return String;
 }
 
@@ -90,15 +126,15 @@ int main()
     stdin = &uart_input;
     PCICR = (1 << INT0);
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
-    sei();   //Enable Interrupts
+    sei();                               //Enable Interrupts
     puts("Hello World!");
     _delay_ms(10);
     const char *input;
     while (1)
     {
-      puts("Enter String: ");
-      input=uart_getString(4);
-      printf("You wrote %s\n", input); 
-    }                     
+        puts("Enter String: ");
+        input = uart_getString(4);
+        printf("You wrote %s\n", input);
+    }
     return 0;
 }
