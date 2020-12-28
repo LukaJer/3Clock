@@ -26,14 +26,15 @@ ISR(INT0_vect) //PPS
 
 ISR(USART_RX_vect) //GPS transmitts data
 {
+
     char rec_char = UDR0;
+    puts(rec_char); // For Debug
     cli();
     if (GGA_Index > 7) //Time data finished
     {
         if (!Time_Set) //Init Time
         {
         strncpy(time,GPS_Data, 8);
-
         }
         IsGGA = false;
     }
@@ -91,14 +92,6 @@ void initADC()
     {
     }
     (void)ADCW; //Dump Dummy ADCW
-}
-
-void GPS_Time()
-{
-}
-
-void Internal_Time()
-{
 }
 
 const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART; returns a pointer
