@@ -28,8 +28,9 @@ ISR(USART_RX_vect) //GPS transmitts data
 {
 
     char rec_char = UDR0;
-    puts(rec_char); // For Debug
     cli();
+   printf("%c\n",rec_char); // For Debug
+    
     if (GGA_Index > 7) //Time data finished
     {
         if (!Time_Set) //Init Time
