@@ -4,14 +4,21 @@ OBJCOPY=avr-objcopy
 AVRDUDE=avrdude
 CFLAGS=-g -Wall -Os #-mcall-prologues
 PRGRM=stk500v2
+PORT=/dev/ttyUSB0
 	
-all:
+default:
 	${CC} -mmcu=${MCU} ${CFLAGS} -o main.o clock.c uart.c
 	${OBJCOPY} -j .text -j .data -O ihex main.o main.hex	
 	avr-size --mcu=${MCU} -C main.o
 
 flash:
-	${AVRDUDE} -p ${MCU} -c ${PRGRM}  -P /dev/ttyUSB1 -U flash:w:main.hex:i -F
+	${AVRDUDE} -p ${MCU} -c ${PRGRM}  -P ${PORT} -U flash:w:main.hex:i -F
 
 clean:
 	rm -f *.o *.hex
+	
+all:
+	${CC} -mmcu=${MCU} ${CFLAGS} -o main.o clock.c uart.c
+	${OBJCOPY} -j .text -j .data -O ihex main.o main.hex	
+	avr-size --mcu=${MCU} -C main.o
+	${AVRDUDE} -p ${MCU} -c ${PRGRM}  -P ${PORT} -U flash:w:main.hex:i -F
