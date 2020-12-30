@@ -10,7 +10,7 @@
 #include "uart.h"
 #include <avr/interrupt.h>
 #include <string.h>
-#include <time.h> 
+//#include <time.h> 
 
 bool IsGGA = false, Time_Set=false; //technicially GA,
 int GGA_Index;
@@ -97,15 +97,14 @@ void initADC()
 const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART; returns a pointer
 {
     uint8_t charlength = 0;
-    char uString[length];
+    char *uString=malloc(length);
     do
     {
         uString[charlength] = getchar();
         charlength++;
     } while (uString[charlength - 1] != '\n' && charlength < length);
-    uString[charlength + 1] = '\0';
-    const char *String = uString;
-    return String;
+    uString[length] = '\0';
+    return uString;
 }
 
 int main()
@@ -122,12 +121,13 @@ int main()
     sei();                               //Enable Interrupts
     puts("Hello World!");
     _delay_ms(10);
-    const char *input;
+    
     while (1)
     {
         puts("Enter String: ");
-        input = uart_getString(4);
+        char *input = uart_getString(4);
         printf("You wrote %s\n", input);
+        free(input);
     }
     return 0;
 }

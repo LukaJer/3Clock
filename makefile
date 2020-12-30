@@ -11,7 +11,7 @@ all:
 	avr-size --mcu=${MCU} -C main.o
 
 flash:
-	${AVRDUDE} -p ${MCU} -c ${PRGRM}  -P /dev/ttyUSB0 -U flash:w:main.hex:i -F
+	${AVRDUDE} -p ${MCU} -c ${PRGRM}  -P /dev/ttyUSB1 -U flash:w:main.hex:i -F
 
 clean:
 	rm -f *.o *.hex
