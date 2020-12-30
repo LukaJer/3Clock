@@ -10,9 +10,9 @@
 #include "uart.h"
 #include <avr/interrupt.h>
 #include <string.h>
-//#include <time.h> 
+//#include <time.h>
 
-bool IsGGA = false, Time_Set=false; //technicially GA,
+bool IsGGA = false, Time_Set = false; //technicially GA,
 int GGA_Index;
 char GPS_Data[10];
 char GPS_Buffer[3];
@@ -34,7 +34,7 @@ ISR(USART_RX_vect) //GPS transmitts data
     {
         if (!Time_Set) //Init Time
         {
-        strncpy(time,GPS_Data, 8);
+            strncpy(time, GPS_Data, 8);
         }
         IsGGA = false;
     }
@@ -97,7 +97,7 @@ void initADC()
 const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART; returns a pointer
 {
     uint8_t charlength = 0;
-    char *uString=malloc(length);
+    char *uString = malloc(length);
     do
     {
         uString[charlength] = getchar();
@@ -109,9 +109,6 @@ const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART
 
 int main()
 {
-    // puts("String") for output
-    // char input = getchar(); for input
-
     cli(); //Disable Interrupts
     uart_init();
     stdout = &uart_output;
@@ -121,13 +118,21 @@ int main()
     sei();                               //Enable Interrupts
     puts("Hello World!");
     _delay_ms(10);
-    
+
     while (1)
     {
-        puts("Enter String: ");
-        char *input = uart_getString(4);
-        printf("You wrote %s\n", input);
-        free(input);
+        //run temperature compensation
     }
     return 0;
 }
+
+//UART Manual
+/*
+Input:
+char *input = uart_getString(length of String);
+//do something with input
+free(input);
+
+Output:
+puts() or printf()
+*/
