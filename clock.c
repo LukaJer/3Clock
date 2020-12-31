@@ -29,18 +29,21 @@ ISR(USART_RX_vect) //GPS transmitts data
 
     char rec_char = UDR0;
     cli();
-   printf("%c\n",rec_char); // For Debug
-    
-    if (GGA_Index > 7) //Time data finished
+    //printf("%c", rec_char); // For Debug
+
+    if (GGA_Index > 8) //Time data finished
     {
         if (!Time_Set) //Init Time
         {
             strncpy(time, GPS_Data, 8);
         }
+        GGA_Index = 0;
+        printf("Time %.10s\n", GPS_Data);
         IsGGA = false;
     }
     if (IsGGA) //checks for GA,
     {
+        if(rec_char==',') IsGGA=false;
         GPS_Data[GGA_Index] = rec_char; // write directly to time?
         GGA_Index++;
     }
@@ -52,6 +55,7 @@ ISR(USART_RX_vect) //GPS transmitts data
         if (GPS_Buffer[0] == 'G' && GPS_Buffer[1] == 'A' && GPS_Buffer[2] == ',')
         {
             IsGGA = true;
+            //puts("IsGGA");
             GGA_Index = 0;
             GPS_Buffer[0] = 0;
             GPS_Buffer[1] = 0;

@@ -4,7 +4,7 @@ OBJCOPY=avr-objcopy
 AVRDUDE=avrdude
 CFLAGS=-g -Wall -Os #-mcall-prologues
 PRGRM=stk500v2
-PORT=/dev/ttyUSB0
+PORT=/dev/ttyUSB1
 	
 default:
 	${CC} -mmcu=${MCU} ${CFLAGS} -o main.o clock.c uart.c
