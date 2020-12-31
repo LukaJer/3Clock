@@ -9,3 +9,6 @@ TODO:
   * GPS_Data char or int
 * Temperature Read
 * Temperature Compensate
+
+Notes:
+* Onboard Arduino Nano Serial (CH340) can be used for Serial IO (Debugging)

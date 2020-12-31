@@ -29,8 +29,6 @@ ISR(USART_RX_vect) //GPS transmitts data
 
     char rec_char = UDR0;
     cli();
-    //printf("%c", rec_char); // For Debug
-
     if (GGA_Index > 8) //Time data finished
     {
         if (!Time_Set) //Init Time
@@ -55,15 +53,12 @@ ISR(USART_RX_vect) //GPS transmitts data
         if (GPS_Buffer[0] == 'G' && GPS_Buffer[1] == 'A' && GPS_Buffer[2] == ',')
         {
             IsGGA = true;
-            //puts("IsGGA");
             GGA_Index = 0;
             GPS_Buffer[0] = 0;
             GPS_Buffer[1] = 0;
             GPS_Buffer[2] = 0;
         }
     }
-
-    //TODO GPS Decode and Time Storage
 }
 
 double getTemp() //Reads and calculates Temperature
