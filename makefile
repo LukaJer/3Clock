@@ -14,6 +14,9 @@ default:
 flash:
 	${AVRDUDE} -p ${MCU} -c ${PRGRM}  -P ${PORT} -U flash:w:main.hex:i -F
 
+flasha:
+	${AVRDUDE} -c arduino -b 57600 -P ${PORT} -p ${MCU} -vv -U flash:w:blink.hex 
+
 clean:
 	rm -f *.o *.hex
 	
