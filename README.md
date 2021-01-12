@@ -24,6 +24,7 @@ Commands to use:
 * git
   * pull
 * git
+  * add [filename]
   * commit
   * push
 
