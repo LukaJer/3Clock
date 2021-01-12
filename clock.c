@@ -34,6 +34,7 @@ ISR(USART_RX_vect) //GPS transmitts data
         if (!Time_Set) //Init Time
         {
             strncpy(time, GPS_Data, 8);
+            Time_Set=true;
         }
         GGA_Index = 0;
         printf("Time %.10s\n", GPS_Data);
@@ -135,4 +136,11 @@ free(input);
 
 Output:
 puts() or printf()
+*/
+
+//GPSData
+/*
+$GPRMC,235316.000,A,4003.9040,N,10512.5792,W,0.09,144.75,141112,,*19
+$GPGGA,235317.000,4003.9039,N,10512.5793,W,1,08,1.6,1577.9,M,-20.7,M,,0000*5F
+$GPGSA,A,3,22,18,21,06,03,09,24,15,,,,,2.5,1.6,1.9*3E
 */
