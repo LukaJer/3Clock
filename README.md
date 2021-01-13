@@ -15,12 +15,14 @@ Notes:
 
 
 Commands to use:
-* make
+* build/flash:
   * disconnect RX0 before flash
-  * make flash
-  * make flasha
+  * make = compile
+  * make flash = flash via ISP
+  * make flasha = flash vie Onboard CH340 (not working)
+  * make all = make && make flash
 * screen /dev/ttyUSB0
-* ls /dev/ | grep USB
+* ls /dev/ | grep USB or ls /dev/ttyUSB*
 * git
   * pull
 * git
