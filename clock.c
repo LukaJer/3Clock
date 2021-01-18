@@ -12,11 +12,32 @@
 #include <string.h>
 //#include <time.h>
 
+//standard integer definitions (ie, uint8_t, int32_t, etc)
+#include <stdint.h>
+
+
+
+
+//Basic bit manipulation macros
+//position y of register x
+#define SET(x,y) x |= (1 << y) //1
+#define CLEAR(x,y) x &= ~(1<< y) //0
+#define READ(x,y) ((0x00 == ((x & (1<<y))>> y))?0x00:0x01) //if(1)
+#define TOGGLE(x,y) (x ^= (1<<y)) //inverse
+
+uint32_t millis = 0;
+bool timer_running = false;
+
 bool IsGGA = false, Time_Set = false; //technicially GA,
 int GGA_Index;
-char GPS_Data[10];
+char GPS_Data[6];//HHMMSS
 char GPS_Buffer[3];
-uint8_t time[8]; //HH:MM:SS:MSMS
+char time[3]; //HMS
+
+ISR(TIMER1_COMPA_vect)
+{
+	millis++;
+}
 
 ISR(INT0_vect) //PPS
 {
@@ -26,26 +47,43 @@ ISR(INT0_vect) //PPS
 
 ISR(USART_RX_vect) //GPS transmitts data
 {
-
     char rec_char = UDR0;
     cli();
-    if (GGA_Index > 8) //Time data finished
+    if (GGA_Index > 5) //Time data finished (we need 0..5)
     {
+    	/*
         if (!Time_Set) //Init Time
         {
-            strncpy(time, GPS_Data, 8);
+            strncpy(time, GPS_Data, 8); //copies 8 chars from time to GPS_Data
             Time_Set=true;
         }
+        */
+        
         GGA_Index = 0;
-        printf("Time %.10s\n", GPS_Data);
+        printf("Time %.6s", GPS_Data);
+        convTime(GPS_Data, time);
+        printf(" time: %d %d %d;", time[0], time[1], time[2]);
+        
+        //Execute only when the first time data is received from the GPS
+        if(!timer_running){
+		//TIMER: start timer with prescalar: 8
+		SET(TCCR1B,CS11);
+		timer_running = true;
+		
+		
+		}
+		
+        printf(" millis = %lu\n", millis);
         IsGGA = false;
     }
+    
     if (IsGGA) //checks for GA,
     {
         if(rec_char==',') IsGGA=false;
-        GPS_Data[GGA_Index] = rec_char; // write directly to time?
+        GPS_Data[GGA_Index] = rec_char; // write the received char into GPS_Data
         GGA_Index++;
     }
+    
     else
     {
         GPS_Buffer[0] = GPS_Buffer[1];
@@ -108,6 +146,15 @@ const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART
     return uString;
 }
 
+
+void convTime(char * char_array, int * int_array)
+{
+    for(int i; i<3; i++){
+        int_array[i] = (char_array[i*2]-48)*10+char_array[i*2+1]-48;
+    }
+    return 0;
+}
+
 int main()
 {
     cli(); //Disable Interrupts
@@ -119,6 +166,20 @@ int main()
     sei();                               //Enable Interrupts
     puts("Hello World!");
     _delay_ms(10);
+    
+    
+    //TIMER: Set CTC Bit, so counter will auto-restart, when it compares true to the timervalue
+	SET(TCCR1B,WGM12);
+	
+	//TIMER: 16-Bit Value continuesly compared to counter register
+	OCR1A = 2000;
+	
+	//TIMER: Timer/Counter Interrupt Mask Register has to be set to 1 at OCIE0A, so the interrupt will not be masked
+	SET(TIMSK1,OCIE1A);
+	
+	//TIMER: enable interrupts
+	sei();
+	
 
     while (1)
     {
