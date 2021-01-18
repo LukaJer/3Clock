@@ -26,11 +26,20 @@ bool IsGGA = false, Time_Set = false, timer_running = false;
 int GGA_Index;
 char GPS_Data[6]; //HHMMSS
 char GPS_Buffer[3];
-int time[3]; //HMS
+int time[3];  //HMS
+int time2[4]; //HMSMS
 
 ISR(TIMER1_COMPA_vect)
 {
     millis++;
+    if (time2[3] == 999)
+    {
+        timeAddSec();
+    }
+    else
+    {
+        time2[3]++;
+    }
 }
 
 ISR(INT0_vect) //PPS
@@ -48,14 +57,17 @@ ISR(USART_RX_vect) //GPS transmitts data
         GGA_Index = 0;
         printf("Time %.6s", GPS_Data);
         convTime(GPS_Data, time);
-        printf(" time: %d %d %d;", time[0],time[1],time[2]);
-
+        //printf(" time: %d %d %d;", time[0], time[1], time[2]);
+        printf(" time2: %02d %02d %02d %02d;", time2[0], time2[1], time2[2], time[3]);
         //Execute only when the first time data is received from the GPS
         if (!timer_running)
         {
             //TIMER: start timer with prescalar: 8
             SET(TCCR1B, CS11);
             timer_running = true;
+            time2[0] = time[0];
+            time2[1] = time[1];
+            time2[2] = time[2];
         }
 
         printf(" millis = %lu\n", millis);
@@ -83,6 +95,47 @@ ISR(USART_RX_vect) //GPS transmitts data
             GPS_Buffer[1] = 0;
             GPS_Buffer[2] = 0;
         }
+    }
+}
+
+void timeAddSec()
+{
+    time2[3] = 0;
+
+    if (time2[2] == 59)
+    {
+        timeAddMin();
+    }
+    else
+    {
+        time2[2]++;
+    }
+}
+
+void timeAddMin()
+{
+    time2[2] = 0;
+
+    if (time2[1] == 59)
+    {
+        timeAddH();
+    }
+    else
+    {
+        time2[1]++;
+    }
+}
+void timeAddH()
+{
+    time2[1] = 0;
+
+    if (time2[0] == 23)
+    {
+        time[0] = 0;
+    }
+    else
+    {
+        time2[0]++;
     }
 }
 
@@ -134,7 +187,7 @@ const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART
 
 void convTime(char *char_array, int *int_array)
 {
-    for (int i=0; i < 3; i++)
+    for (int i = 0; i < 3; i++)
     {
         int_array[i] = (char_array[i * 2] - 48) * 10 + char_array[i * 2 + 1] - 48;
     }
