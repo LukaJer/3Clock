@@ -51,7 +51,7 @@ ISR(INT0_vect) //PPS
 ISR(USART_RX_vect) //GPS transmitts data
 {
     char rec_char = UDR0;
-    cli();
+    //cli();
     if (GGA_Index > 5) //Time data finished (we need 0..5)
     {
         GGA_Index = 0;
@@ -59,18 +59,17 @@ ISR(USART_RX_vect) //GPS transmitts data
         convTime(GPS_Data, time);
         //printf(" time: %d %d %d;", time[0], time[1], time[2]);
         printf(" time2: %02d %02d %02d %02d;", time2[0], time2[1], time2[2], time2[3]);
-        //Execute only when the first time data is received from the GPS
-        if (!timer_running)
+        
+        if (!timer_running)//Execute only when the first time data is received from the GPS
         {
-            //TIMER: start timer with prescalar: 8
-            SET(TCCR1B, CS11);
+            SET(TCCR1B, CS11);//TIMER: start timer with prescalar: 8
             timer_running = true;
             time2[0] = time[0];
             time2[1] = time[1];
-            time2[2] = time[2];
+            time2[2] = time[2]+1; //Very Ugly fix
         }
-
-        printf(" millis = %lu\n", millis);
+        printf(" millis = %lu", millis);
+        printf("  GPSTime-OnBoardTime = %d s\n", time[2]-time2[2]); //only s for now, better with PPS Trigger
         IsGGA = false;
     }
 
@@ -81,7 +80,6 @@ ISR(USART_RX_vect) //GPS transmitts data
         GPS_Data[GGA_Index] = rec_char; // write the received char into GPS_Data
         GGA_Index++;
     }
-
     else
     {
         GPS_Buffer[0] = GPS_Buffer[1];
