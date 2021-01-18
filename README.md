@@ -12,3 +12,21 @@ TODO:
 
 Notes:
 * Onboard Arduino Nano Serial (CH340) can be used for Serial IO (Debugging)
+
+
+Commands to use:
+* build/flash:
+  * disconnect RX0 before flash
+  * make = compile
+  * make flash = flash via ISP
+  * make flasha = flash vie Onboard CH340 (not working)
+  * make all = make && make flash
+* screen /dev/ttyUSB0
+* ls /dev/ | grep USB or ls /dev/ttyUSB*
+* git
+  * pull
+* git
+  * add [filename]
+  * commit
+  * push
+
