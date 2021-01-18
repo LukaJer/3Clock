@@ -24,6 +24,7 @@ void convTime(char *char_array, int *int_array);
 void timeAddH();
 void timeAddSec();
 void timeAddMin();
+void initTimer();
 
 uint32_t millis = 0;
 uint32_t millis_ISR = 0;
@@ -39,10 +40,17 @@ int BoardTime[4];
 char GPS_Buffer[3];
 int GPSTime[3]; //HMS
 
-
 ISR(TIMER1_COMPA_vect)
 {
     millis++;
+    if (BoardTime[3] == 999)
+    {
+        timeAddSec(BoardTime);
+    }
+    else
+    {
+        BoardTime[3]++;
+    }
 }
 
 ISR(INT0_vect) //PPS
@@ -66,7 +74,7 @@ ISR(INT0_vect) //PPS
         delta = gps_millis - millis;
     }
     counter++;
-    timeAddSec();
+    timeAddSec(GPSTime);
 }
 
 ISR(USART_RX_vect) //GPS transmitts data
@@ -78,12 +86,14 @@ ISR(USART_RX_vect) //GPS transmitts data
         GGA_Index = 0;
         printf("GPSTime %.6s", GPS_Data);
         convTime(GPS_Data, BoardTime);
+        convTime(GPS_Data, GPSTime);
         UCSR0B &= ~(1 << RXCIE0); //Dsiable UART Interrupt
         initTimer();
     }
     if (IsGGA) //checks for GA,
     {
-        if(rec_char==',') IsGGA=false;
+        if (rec_char == ',')
+            IsGGA = false;
         GPS_Data[GGA_Index] = rec_char; // write directly to time?
         GGA_Index++;
     }
@@ -103,20 +113,20 @@ ISR(USART_RX_vect) //GPS transmitts data
     }
 }
 
-void timeAddSec()
+void timeAddSec(int *Time)
 {
-    BoardTime[3] = 0;
-    (BoardTime[2] == 59) ? timeAddMin() : BoardTime[2]++;
+    Time[3] = 0;
+    (Time[2] == 59) ? timeAddMin() : Time[2]++;
 }
-void timeAddMin()
+void timeAddMin(int *Time)
 {
-    BoardTime[2] = 0;
-    (BoardTime[1] == 59) ? timeAddH() : BoardTime[1]++;
+    Time[2] = 0;
+    (Time[1] == 59) ? timeAddH() : Time[1]++;
 }
-void timeAddH()
+void timeAddH(int *Time)
 {
-    BoardTime[1] = 0;
-    (BoardTime[0] == 23) ? GPSTime[0] = 0 : BoardTime[0]++;
+    Time[1] = 0;
+    (Time[0] == 23) ? GPSTime[0] = 0 : Time[0]++;
 }
 
 double getTemp() //Reads and calculates Temperature
@@ -160,8 +170,9 @@ void convTime(char *char_array, int *int_array)
     }
 }
 
-void initTimer(){
-       //timer config
+void initTimer()
+{
+    //timer config
     //
     //Set CTC Bit, so counter will auto-restart, when it compares true to the timervalue
     SET(TCCR1B, WGM12);
