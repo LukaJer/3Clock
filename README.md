@@ -29,4 +29,3 @@ Commands to use:
   * add [filename]
   * commit
   * push
-

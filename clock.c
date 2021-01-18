@@ -10,15 +10,21 @@
 #include "uart.h"
 #include <avr/interrupt.h>
 #include <string.h>
-#include <stdint.h>
 //#include <time.h>
+
+//standard integer definitions (ie, uint8_t, int32_t, etc)
+#include <stdint.h>
+
+
+
 
 //Basic bit manipulation macros
 //position y of register x
-#define SET(x, y) x |= (1 << y)                                    //1
-#define CLEAR(x, y) x &= ~(1 << y)                                 //0
-#define READ(x, y) ((0x00 == ((x & (1 << y)) >> y)) ? 0x00 : 0x01) //if(1)
-#define TOGGLE(x, y) (x ^= (1 << y))                               //inverse
+#define SET(x,y) x |= (1 << y) //1
+#define CLEAR(x,y) x &= ~(1<< y) //0
+#define READ(x,y) ((0x00 == ((x & (1<<y))>> y))?0x00:0x01) //if(1)
+#define TOGGLE(x,y) (x ^= (1<<y)) //inverse
+
 
 void convTime(char *char_array, int *int_array);
 
@@ -26,9 +32,9 @@ uint32_t millis = 0, delta = 0;
 bool IsGGA = false, Time_Set = false, timer_running = false;
 int GGA_Index, timeDiff;
 char GPS_Data[6]; //HHMMSS
+
 char GPS_Buffer[3];
-int time[3];  //HMS
-int time2[4]; //HMSMS
+char time[3]; //HMS
 
 uint32_t time_to_millis(char *time)
 {
@@ -37,15 +43,7 @@ uint32_t time_to_millis(char *time)
 
 ISR(TIMER1_COMPA_vect)
 {
-    millis++;
-    if (time2[3] == 999)
-    {
-        timeAddSec();
-    }
-    else
-    {
-        time2[3]++;
-    }
+	millis++;
 }
 
 ISR(INT0_vect) //PPS
@@ -60,6 +58,7 @@ ISR(USART_RX_vect) //GPS transmitts data
     //cli();
     if (GGA_Index > 5) //Time data finished (we need 0..5)
     {
+
         GGA_Index = 0;
         //printf("GPSTime %.6s", GPS_Data);
         convTime(GPS_Data, time);
@@ -79,7 +78,9 @@ ISR(USART_RX_vect) //GPS transmitts data
         printf("timeDiff = %d s\n", timeDiff); //only s for now, better with PPS Trigger
         printf(" delta_millis = %lu\n", (time_to_millis(time) - millis) - delta);
         delta = (time_to_millis(time) - millis);
+
     }
+    
     else
     {
         GPS_Buffer[0] = GPS_Buffer[1];
@@ -96,6 +97,7 @@ ISR(USART_RX_vect) //GPS transmitts data
     }
 }
 
+
 void timeAddSec()
 {
     time2[3] = 0;
@@ -111,6 +113,7 @@ void timeAddH()
     time2[1] = 0;
     (time2[0] == 59) ? time[0] = 0 : time2[0]++;
 }
+
 
 double getTemp() //Reads and calculates Temperature
 {
@@ -158,6 +161,7 @@ const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART
     return uString;
 }
 
+
 void convTime(char *char_array, int *int_array)
 {
     for (int i = 0; i < 3; i++)
@@ -165,6 +169,7 @@ void convTime(char *char_array, int *int_array)
         int_array[i] = (char_array[i * 2] - 48) * 10 + char_array[i * 2 + 1] - 48;
     }
 }
+
 
 int main()
 {
@@ -176,10 +181,21 @@ int main()
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
     puts("Hello World!");
     _delay_ms(10);
-    SET(TCCR1B, WGM12);  //TIMER: Set CTC Bit, so counter will auto-restart, when it compares true to the timervalue
-    OCR1A = 2000;        //TIMER: 16-Bit Value continuesly compared to counter register
-    SET(TIMSK1, OCIE1A); //TIMER: Timer/Counter Interrupt Mask Register has to be set to 1 at OCIE0A, so the interrupt will not be masked
-    sei();               //TIMER: enable interrupts
+    
+    
+    //TIMER: Set CTC Bit, so counter will auto-restart, when it compares true to the timervalue
+	SET(TCCR1B,WGM12);
+	
+	//TIMER: 16-Bit Value continuesly compared to counter register
+	OCR1A = 2000;
+	
+	//TIMER: Timer/Counter Interrupt Mask Register has to be set to 1 at OCIE0A, so the interrupt will not be masked
+	SET(TIMSK1,OCIE1A);
+	
+	//TIMER: enable interrupts
+	sei();
+	
+
     while (1)
     {
         //run temperature compensation
