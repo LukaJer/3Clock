@@ -1,3 +1,6 @@
+//NOTE: please use avr-gcc options to make printf float work:
+// -Wl,-u,vfprintf -lprintf_flt
+
 #define F_CPU 16000000UL //Set CPU Clock to 16MHz
 #define BAUD 115200
 #define NTC_pin PC0
@@ -29,6 +32,10 @@ void printDigit2(int digit);
 void printDigit4(int digit);
 void printDigit(int digit);
 
+int Ro = 100, B =  3974; //Nominal resistance 100K, Beta constant
+int Rseries = 100;// Series resistor 100K
+float To = 298.15; //nominal temperature, 25degC
+
 uint32_t millis = 0;
 uint32_t millis_ISR = 0;
 uint32_t gps_millis = 0;
@@ -42,6 +49,40 @@ char GPS_Data[6]; //HHMMSS
 int BoardTime[4];//{H,M,S,MS}  Time calculated from millis (from 16-Bit timer)
 char GPS_Buffer[3];
 int GPSTime[3]; //HMS
+
+
+int adc_read(){
+    
+    //connect to A5
+    SET(ADMUX,MUX2);
+    SET(ADMUX,MUX0);
+    
+    //start conversion
+    SET(ADCSRA,ADSC);
+    
+    //wait while Bit ADSC of Register ADCSRA is enabled
+    while(ADCSRA & (1<<ADSC));
+     
+    //return two bytes
+    return (int)(ADC);
+}
+
+
+float getTemp(int reading)
+{
+	//Read analog outputof NTC module, i.e the voltage across the thermistor
+	float Vi = ((float)reading) * (5.0 / 1023.0);
+	//Convert voltage measured to resistance value
+	//All Resistance are in kilo ohms.
+	float R = (Vi * Rseries) / (5 - Vi);
+	/*Use R value in steinhart and hart equation
+	Calculate temperature value in kelvin*/
+	float T =  1 / ((1 / To) + ((log(R / Ro)) / B));
+	float Tc = T - 273.15; // Converting kelvin to celsius
+	return Tc;
+}
+
+
 
 ISR(TIMER1_COMPA_vect)
 {
@@ -58,7 +99,7 @@ ISR(TIMER1_COMPA_vect)
 
 ISR(INT0_vect) //PPS
 {
-	sei();	
+	sei();
 	
     if (setup)
     {
@@ -76,6 +117,7 @@ ISR(INT0_vect) //PPS
 
     if (counter % 1 == 0)
     {
+    	//main print output every 1s (PPS)
     	printDigit2(BoardTime[0]);
     	printf(":");
     	printDigit2(BoardTime[1]);
@@ -83,13 +125,16 @@ ISR(INT0_vect) //PPS
     	printDigit2(BoardTime[2]);
     	printf(":");
     	printDigit4(BoardTime[3]);
-    	printf(" ");
+        
+        int value = adc_read();
+        printf(" %d", value);
+        float temp = getTemp(value);
+        printf(" %.1f°C", temp);
+        
+        printf(" ");
         printDigit((gps_millis - millis) - delta);//prints +
         printf("%d", (gps_millis - millis) - delta);
         delta = gps_millis - millis;
-        
-        getTemp();
-        printf(" sensor:%u;", ADCW);
         
         printf("\n");
         
@@ -149,39 +194,6 @@ void timeAddH(int *Time)
     (Time[0] == 23) ? GPSTime[0] = 0 : Time[0]++;
 }
 
-void getTemp() //Reads and calculates Temperature
-{
-    //ADC is 10bit
-    /*
-    Needed  or already set in initADC()?
-    ADMUX = (ADMUX & ~(0x1F)) | (0 & 0x1F); //A0 as input 
-    */
-    ADCSRA |= (1 << ADSC);       // Read ADC
-    while (ADCSRA & (1 << ADSC)) // Convert and wait
-    {
-    }
-    /*
-    measurement is stored as (unit16_t) ADCW
-    */
-    //TODO: ADC to Temp conversion
-
-    return;
-}
-
-void initADC()
-{
-    ADMUX = (1 << REFS1) | (0 << REFS0);                 // Set internal as Vref
-    ADMUX |= NTC_pin;                                    // Set A0 as input
-    ADCSRA = (1 << ADPS1) | (1 << ADPS0) | (1 << ADPS0); //Frequenxy prescaler 128 (CLK/125kHz)
-    ADCSRA |= (1 << ADEN);                               // Enable ADC
-    ADCSRA |= (1 << ADSC);                               // Read ADC
-    //Dummy Readout seems to be good practice
-    while (ADCSRA & (1 << ADSC)) // Convert and wait
-    {
-    }
-    (void)ADCW; //Dump Dummy ADCW
-}
-
 void convTime(char *char_array, int *int_array)
 {
 	int i = 0;
@@ -189,6 +201,12 @@ void convTime(char *char_array, int *int_array)
     {
         int_array[i] = (char_array[i * 2] - 48) * 10 + char_array[i * 2 + 1] - 48;
     }
+}
+
+void initADC()
+{
+    ADMUX = (1<<REFS0);
+    ADCSRA = (1<<ADEN)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0);
 }
 
 void initTimer()
@@ -230,14 +248,16 @@ int main()
 {
     cli(); //Disable Interrupts
     uart_init();
+    initTimer();//setup timer
+    initADC();//setup ADC
+    
     stdout = &uart_output;
     stdin = &uart_input;
     SET(EIMSK,INT0);//set mask
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
     
-    initTimer();//setup timer
     
-    puts("HH:MM:SS:MSMS Drift");
+    puts("HH:MM:SS:MSMS ADC TMP    Drift");
     _delay_ms(10);
     sei();
     while (1)
