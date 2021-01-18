@@ -25,6 +25,9 @@ void timeAddH();
 void timeAddSec();
 void timeAddMin();
 void initTimer();
+void printDigit2(int digit);
+void printDigit4(int digit);
+void printDigit(int digit);
 
 uint32_t millis = 0;
 uint32_t millis_ISR = 0;
@@ -36,7 +39,7 @@ int BoardTime[4];
 bool IsGGA = false;
 int GGA_Index, timeDiff;
 char GPS_Data[6]; //HHMMSS
-int BoardTime[4];
+int BoardTime[4];//{H,M,S,MS}  Time calculated from millis (from 16-Bit timer)
 char GPS_Buffer[3];
 int GPSTime[3]; //HMS
 
@@ -55,6 +58,8 @@ ISR(TIMER1_COMPA_vect)
 
 ISR(INT0_vect) //PPS
 {
+	sei();	
+	
     if (setup)
     {
         //start timer with prescalar: 8
@@ -65,16 +70,31 @@ ISR(INT0_vect) //PPS
 
         setup = false;
     }
-    else
-        gps_millis = gps_millis + 1000;
+    else gps_millis = gps_millis + 1000;
+    
+	timeAddSec(GPSTime);
 
-    if (counter % 30 == 0)
+    if (counter % 1 == 0)
     {
-        printf("%ld\n", (gps_millis - millis) - delta);
+    	printDigit2(BoardTime[0]);
+    	printf(":");
+    	printDigit2(BoardTime[1]);
+    	printf(":");
+    	printDigit2(BoardTime[2]);
+    	printf(":");
+    	printDigit4(BoardTime[3]);
+    	printf(" ");
+        printDigit((gps_millis - millis) - delta);//prints +
+        printf("%d", (gps_millis - millis) - delta);
         delta = gps_millis - millis;
+        
+        getTemp();
+        printf(" sensor:%u;", ADCW);
+        
+        printf("\n");
+        
     }
     counter++;
-    timeAddSec(GPSTime);
 }
 
 ISR(USART_RX_vect) //GPS transmitts data
@@ -84,11 +104,11 @@ ISR(USART_RX_vect) //GPS transmitts data
     if (GGA_Index > 5) //Time data finished (we need 0..5)
     {
         GGA_Index = 0;
-        printf("GPSTime %.6s", GPS_Data);
+        //printf("GPSTime %.6s", GPS_Data);
         convTime(GPS_Data, BoardTime);
-        convTime(GPS_Data, GPSTime);
+        //convTime(GPS_Data, GPSTime);
         UCSR0B &= ~(1 << RXCIE0); //Dsiable UART Interrupt
-        initTimer();
+        
     }
     if (IsGGA) //checks for GA,
     {
@@ -129,7 +149,7 @@ void timeAddH(int *Time)
     (Time[0] == 23) ? GPSTime[0] = 0 : Time[0]++;
 }
 
-double getTemp() //Reads and calculates Temperature
+void getTemp() //Reads and calculates Temperature
 {
     //ADC is 10bit
     /*
@@ -145,7 +165,7 @@ double getTemp() //Reads and calculates Temperature
     */
     //TODO: ADC to Temp conversion
 
-    return 0;
+    return;
 }
 
 void initADC()
@@ -164,7 +184,8 @@ void initADC()
 
 void convTime(char *char_array, int *int_array)
 {
-    for (int i = 0; i < 3; i++)
+	int i = 0;
+    for (; i < 3; i++)
     {
         int_array[i] = (char_array[i * 2] - 48) * 10 + char_array[i * 2 + 1] - 48;
     }
@@ -178,12 +199,31 @@ void initTimer()
     SET(TCCR1B, WGM12);
     //
     //16-Bit Value continuesly compared to counter register
-    OCR1A = 2000;
+    OCR1A = 1990;//2000 without printf
     //
     //Timer/Counter Interrupt Mask Register has to be set to 1 at OCIE0A, so the interrupt will not be masked
     SET(TIMSK1, OCIE1A);
     //
     //enable interrupts
+}
+
+void printDigit(int digit)
+{
+	if(digit > 0) printf("+");	
+}
+
+void printDigit2(int digit)
+{
+	if(digit < 10) printf("0%d", digit);
+	else printf("%d", digit);
+}
+
+void printDigit4(int digit)
+{
+	if(digit < 10) printf("000%d", digit);
+	else if(digit < 100) printf("00%d", digit);
+	else if(digit < 1000) printf("0%d", digit);
+	else printf("%d", digit);
 }
 
 int main()
@@ -192,9 +232,12 @@ int main()
     uart_init();
     stdout = &uart_output;
     stdin = &uart_input;
-    PCICR = (1 << INT0); //D2
+    SET(EIMSK,INT0);//set mask
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
-    puts("Hello World!");
+    
+    initTimer();//setup timer
+    
+    puts("HH:MM:SS:MSMS Drift");
     _delay_ms(10);
     sei();
     while (1)
