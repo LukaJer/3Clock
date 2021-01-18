@@ -22,21 +22,12 @@
 
 uint32_t millis = 0;
 bool IsGGA = false, Time_Set = false, timer_running = false;
-; //technicially GA,
 int GGA_Index,timeDiff;
 char GPS_Data[6]; //HHMMSS
 char GPS_Buffer[3];
 int time[3];  //HMS
 int time2[4]; //HMSMS
 
-void convTime(char * char_array, char * int_array)
-{
-	int i=0;
-    for(; i<3; i++){
-        int_array[i] = (char_array[i*2]-48)*10+char_array[i*2+1]-48;
-    }
-    return;
-}
 
 uint32_t time_to_millis(char * time)
 {
@@ -69,7 +60,6 @@ ISR(USART_RX_vect) //GPS transmitts data
     if (GGA_Index > 5) //Time data finished (we need 0..5)
     {
         GGA_Index = 0;
-<<<<<<< HEAD
         //printf("GPSTime %.6s", GPS_Data);
         convTime(GPS_Data, time);
         //printf(" time: %d %d %d;", time[0], time[1], time[2]);
@@ -85,15 +75,6 @@ ISR(USART_RX_vect) //GPS transmitts data
         //printf(" millis = %lu", millis);
         timeDiff=(time[1]-time2[1])*60+time[2]-time2[2];
         printf("timeDiff = %d s\n", timeDiff); //only s for now, better with PPS Trigger
-=======
-        //printf("Time %.6s", GPS_Data);
-        convTime(GPS_Data, time);
-        printf("%d:%d:%d", time[0], time[1], time[2]);
-        
-        //Execute only when the first time data is received from the GPS
-        if(!timer_running){
-        millis = time_to_millis(time);
-		//TIMER: start timer with prescalar: 8
     }
     else
     {
@@ -110,7 +91,7 @@ ISR(USART_RX_vect) //GPS transmitts data
         }
     }
 }
-
+}
 
 void timeAddSec()
 {
@@ -174,7 +155,6 @@ const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART
     return uString;
 }
 
-<<<<<<< HEAD
 void convTime(char *char_array, int *int_array)
 {
     for (int i = 0; i < 3; i++)
@@ -182,9 +162,6 @@ void convTime(char *char_array, int *int_array)
         int_array[i] = (char_array[i * 2] - 48) * 10 + char_array[i * 2 + 1] - 48;
     }
 }
-=======
-
->>>>>>> eedc64318f3686eca262a12511f513ec04698832
 
 int main()
 {
