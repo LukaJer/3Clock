@@ -1,6 +1,6 @@
 #define F_CPU 16000000UL //Set CPU Clock to 16MHz
 #define BAUD 115200
-#define NTC_pin PB0
+#define NTC_pin PC0
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -81,7 +81,12 @@ ISR(USART_RX_vect) //GPS transmitts data
         UCSR0B &= ~(1 << RXCIE0); //Dsiable UART Interrupt
         initTimer();
     }
-
+    if (IsGGA) //checks for GA,
+    {
+        if(rec_char==',') IsGGA=false;
+        GPS_Data[GGA_Index] = rec_char; // write directly to time?
+        GGA_Index++;
+    }
     else
     {
         GPS_Buffer[0] = GPS_Buffer[1];
@@ -180,9 +185,7 @@ int main()
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
     puts("Hello World!");
     _delay_ms(10);
-
     sei();
-
     while (1)
     {
         //run temperature compensation
