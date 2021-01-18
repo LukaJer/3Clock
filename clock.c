@@ -192,7 +192,7 @@ int main()
     uart_init();
     stdout = &uart_output;
     stdin = &uart_input;
-    PCICR = (1 << INT0);
+    PCICR = (1 << INT0); //D2
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
     puts("Hello World!");
     _delay_ms(10);
