@@ -58,7 +58,7 @@ ISR(USART_RX_vect) //GPS transmitts data
         printf("Time %.6s", GPS_Data);
         convTime(GPS_Data, time);
         //printf(" time: %d %d %d;", time[0], time[1], time[2]);
-        printf(" time2: %02d %02d %02d %02d;", time2[0], time2[1], time2[2], time[3]);
+        printf(" time2: %02d %02d %02d %02d;", time2[0], time2[1], time2[2], time2[3]);
         //Execute only when the first time data is received from the GPS
         if (!timer_running)
         {
