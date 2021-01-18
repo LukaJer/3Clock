@@ -101,42 +101,17 @@ ISR(USART_RX_vect) //GPS transmitts data
 void timeAddSec()
 {
     time2[3] = 0;
-
-    if (time2[2] == 59)
-    {
-        timeAddMin();
-    }
-    else
-    {
-        time2[2]++;
-    }
+    (time2[2] == 59) ? timeAddMin() : time2[2]++;
 }
-
 void timeAddMin()
 {
     time2[2] = 0;
-
-    if (time2[1] == 59)
-    {
-        timeAddH();
-    }
-    else
-    {
-        time2[1]++;
-    }
+    (time2[1] == 59) ? timeAddH() : time2[1]++;
 }
 void timeAddH()
 {
     time2[1] = 0;
-
-    if (time2[0] == 23)
-    {
-        time[0] = 0;
-    }
-    else
-    {
-        time2[0]++;
-    }
+    (time2[0] == 59) ? time[0] = 0 : time2[0]++;
 }
 
 double getTemp() //Reads and calculates Temperature
