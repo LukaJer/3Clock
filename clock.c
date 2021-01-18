@@ -91,7 +91,7 @@ ISR(USART_RX_vect) //GPS transmitts data
         }
     }
 }
-}
+
 
 void timeAddSec()
 {
