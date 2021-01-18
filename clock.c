@@ -20,18 +20,19 @@
 #define READ(x, y) ((0x00 == ((x & (1 << y)) >> y)) ? 0x00 : 0x01) //if(1)
 #define TOGGLE(x, y) (x ^= (1 << y))                               //inverse
 
-uint32_t millis = 0;
+void convTime(char *char_array, int *int_array);
+
+uint32_t millis = 0, delta = 0;
 bool IsGGA = false, Time_Set = false, timer_running = false;
-int GGA_Index,timeDiff;
+int GGA_Index, timeDiff;
 char GPS_Data[6]; //HHMMSS
 char GPS_Buffer[3];
 int time[3];  //HMS
 int time2[4]; //HMSMS
 
-
-uint32_t time_to_millis(char * time)
+uint32_t time_to_millis(char *time)
 {
-	return (((uint32_t)time[0]*60+(uint32_t)time[1])*60+(uint32_t)time[2])*1000;
+    return (((uint32_t)time[0] * 60 + (uint32_t)time[1]) * 60 + (uint32_t)time[2]) * 1000;
 }
 
 ISR(TIMER1_COMPA_vect)
@@ -62,19 +63,22 @@ ISR(USART_RX_vect) //GPS transmitts data
         GGA_Index = 0;
         //printf("GPSTime %.6s", GPS_Data);
         convTime(GPS_Data, time);
-        //printf(" time: %d %d %d;", time[0], time[1], time[2]);
+        //printf("%d:%d:%d", time[0], time[1], time[2]);
         //printf(" Onboard: %02d %02d %02d %02d;", time2[0], time2[1], time2[2], time2[3]);
-        
-        if (!timer_running)//Execute only when the first time data is received from the GPS
+
+        if (!timer_running) //Execute only when the first time data is received from the GPS
         {
-            SET(TCCR1B, CS11);//TIMER: start timer with prescalar: 8
+            millis = time_to_millis(time);
+            SET(TCCR1B, CS11); //TIMER: start timer with prescalar: 8
             time2[0] = time[0];
             time2[1] = time[1];
-            time2[2] = time[2]+1; //Very Ugly fix
+            time2[2] = time[2] + 1; //Very Ugly fix
         }
         //printf(" millis = %lu", millis);
-        timeDiff=(time[1]-time2[1])*60+time[2]-time2[2];
+        timeDiff = (time[1] - time2[1]) * 60 + time[2] - time2[2];
         printf("timeDiff = %d s\n", timeDiff); //only s for now, better with PPS Trigger
+        printf(" delta_millis = %lu\n", (time_to_millis(time) - millis) - delta);
+        delta = (time_to_millis(time) - millis);
     }
     else
     {
@@ -91,7 +95,6 @@ ISR(USART_RX_vect) //GPS transmitts data
         }
     }
 }
-
 
 void timeAddSec()
 {
