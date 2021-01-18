@@ -99,7 +99,7 @@ ISR(TIMER1_COMPA_vect)
 
 ISR(INT0_vect) //PPS
 {
-	sei();
+	sei();//interrupts get automatically disabled when ISR is activated. We want our millis still be updated! This fixes the problem of inconsistent timing caused by printf :))
 	
     if (setup)
     {
