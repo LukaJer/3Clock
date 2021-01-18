@@ -26,21 +26,27 @@
 #define TOGGLE(x,y) (x ^= (1<<y)) //inverse
 
 uint32_t millis = 0;
+uint32_t delta = 0;
 bool timer_running = false;
 
 bool IsGGA = false, Time_Set = false; //technicially GA,
 int GGA_Index;
 char GPS_Data[6];//HHMMSS
 char GPS_Buffer[3];
-int time[3]; //HMS
+char time[3]; //HMS
 
-void convTime(char * char_array, int * int_array)
+void convTime(char * char_array, char * int_array)
 {
 	int i=0;
     for(; i<3; i++){
         int_array[i] = (char_array[i*2]-48)*10+char_array[i*2+1]-48;
     }
     return;
+}
+
+uint32_t time_to_millis(char * time)
+{
+	return (((uint32_t)time[0]*60+(uint32_t)time[1])*60+(uint32_t)time[2])*1000;
 }
 
 ISR(TIMER1_COMPA_vect)
@@ -57,7 +63,7 @@ ISR(INT0_vect) //PPS
 ISR(USART_RX_vect) //GPS transmitts data
 {
     char rec_char = UDR0;
-    cli();
+    //cli();
     if (GGA_Index > 5) //Time data finished (we need 0..5)
     {
     	/*
@@ -69,18 +75,20 @@ ISR(USART_RX_vect) //GPS transmitts data
         */
         
         GGA_Index = 0;
-        printf("Time %.6s", GPS_Data);
+        //printf("Time %.6s", GPS_Data);
         convTime(GPS_Data, time);
-        printf(" time: %d %d %d;", time[0], time[1], time[2]);
+        printf("%d:%d:%d", time[0], time[1], time[2]);
         
         //Execute only when the first time data is received from the GPS
         if(!timer_running){
+        millis = time_to_millis(time);
 		//TIMER: start timer with prescalar: 8
 		SET(TCCR1B,CS11);
 		timer_running = true;
 		}
 		
-        printf(" millis = %lu\n", millis);
+        printf(" delta_millis = %lu\n", (time_to_millis(time)-millis)-delta);
+        delta = (time_to_millis(time)-millis);
         IsGGA = false;
     }
     
@@ -163,7 +171,6 @@ int main()
     stdin = &uart_input;
     PCICR = (1 << INT0);
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
-    sei();                               //Enable Interrupts
     puts("Hello World!");
     _delay_ms(10);
     
