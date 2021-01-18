@@ -10,20 +10,20 @@
 #include "uart.h"
 #include <avr/interrupt.h>
 #include <string.h>
-//#include <time.h>
-
-//standard integer definitions (ie, uint8_t, int32_t, etc)
 #include <stdint.h>
-
-
-
+//#include <time.h>
 
 //Basic bit manipulation macros
 //position y of register x
-#define SET(x,y) x |= (1 << y) //1
-#define CLEAR(x,y) x &= ~(1<< y) //0
-#define READ(x,y) ((0x00 == ((x & (1<<y))>> y))?0x00:0x01) //if(1)
-#define TOGGLE(x,y) (x ^= (1<<y)) //inverse
+#define SET(x, y) x |= (1 << y)                                    //1
+#define CLEAR(x, y) x &= ~(1 << y)                                 //0
+#define READ(x, y) ((0x00 == ((x & (1 << y)) >> y)) ? 0x00 : 0x01) //if(1)
+#define TOGGLE(x, y) (x ^= (1 << y))                               //inverse
+
+void convTime(char *char_array, int *int_array);
+void timeAddH();
+void timeAddSec();
+void timeAddMin();
 
 uint32_t millis = 0;
 uint32_t millis_ISR = 0;
@@ -31,32 +31,87 @@ uint32_t gps_millis = 0;
 uint32_t delta = 0;
 bool setup = true;
 int counter = 0;
+int BoardTime[4];
+bool IsGGA = false;
+int GGA_Index, timeDiff;
+char GPS_Data[6]; //HHMMSS
+int BoardTime[4];
+char GPS_Buffer[3];
+int GPSTime[3]; //HMS
+
 
 ISR(TIMER1_COMPA_vect)
 {
-	millis++;
+    millis++;
 }
 
 ISR(INT0_vect) //PPS
 {
-	if(setup)
-	{
-		//start timer with prescalar: 8
-		SET(TCCR1B,CS11);
-		
-		//start timer with prescalar: 1
-		//SET(TCCR1B,CS10);
-		
-		setup = false;
-	}
-	else gps_millis = gps_millis + 1000;
-	
-	if(counter%30 == 0)
-	{
-		printf("%ld\n", (gps_millis - millis) - delta);
-		delta = gps_millis - millis;
-	}
-	counter++;
+    if (setup)
+    {
+        //start timer with prescalar: 8
+        SET(TCCR1B, CS11);
+
+        //start timer with prescalar: 1
+        //SET(TCCR1B,CS10);
+
+        setup = false;
+    }
+    else
+        gps_millis = gps_millis + 1000;
+
+    if (counter % 30 == 0)
+    {
+        printf("%ld\n", (gps_millis - millis) - delta);
+        delta = gps_millis - millis;
+    }
+    counter++;
+    timeAddSec();
+}
+
+ISR(USART_RX_vect) //GPS transmitts data
+{
+    char rec_char = UDR0;
+    //cli();
+    if (GGA_Index > 5) //Time data finished (we need 0..5)
+    {
+        GGA_Index = 0;
+        printf("GPSTime %.6s", GPS_Data);
+        convTime(GPS_Data, BoardTime);
+        UCSR0B &= ~(1 << RXCIE0); //Dsiable UART Interrupt
+        initTimer();
+    }
+
+    else
+    {
+        GPS_Buffer[0] = GPS_Buffer[1];
+        GPS_Buffer[1] = GPS_Buffer[2];
+        GPS_Buffer[2] = rec_char;
+        if (GPS_Buffer[0] == 'G' && GPS_Buffer[1] == 'A' && GPS_Buffer[2] == ',')
+        {
+            IsGGA = true;
+            GGA_Index = 0;
+            GPS_Buffer[0] = 0;
+            GPS_Buffer[1] = 0;
+            GPS_Buffer[2] = 0;
+        }
+    }
+}
+
+void timeAddSec()
+{
+    BoardTime[3] = 0;
+    (BoardTime[2] == 59) ? timeAddMin() : BoardTime[2]++;
+}
+void timeAddMin()
+{
+    BoardTime[2] = 0;
+    (BoardTime[1] == 59) ? timeAddH() : BoardTime[1]++;
+}
+void timeAddH()
+{
+    BoardTime[1] = 0;
+    (BoardTime[0] == 23) ? GPSTime[0] = 0 : BoardTime[0]++;
 }
 
 double getTemp() //Reads and calculates Temperature
@@ -92,41 +147,41 @@ void initADC()
     (void)ADCW; //Dump Dummy ADCW
 }
 
+void convTime(char *char_array, int *int_array)
+{
+    for (int i = 0; i < 3; i++)
+    {
+        int_array[i] = (char_array[i * 2] - 48) * 10 + char_array[i * 2 + 1] - 48;
+    }
+}
+
+void initTimer(){
+       //timer config
+    //
+    //Set CTC Bit, so counter will auto-restart, when it compares true to the timervalue
+    SET(TCCR1B, WGM12);
+    //
+    //16-Bit Value continuesly compared to counter register
+    OCR1A = 2000;
+    //
+    //Timer/Counter Interrupt Mask Register has to be set to 1 at OCIE0A, so the interrupt will not be masked
+    SET(TIMSK1, OCIE1A);
+    //
+    //enable interrupts
+}
+
 int main()
 {
     cli(); //Disable Interrupts
     uart_init();
     stdout = &uart_output;
     stdin = &uart_input;
-    
-    //SET EXTERNAL INTERRUPT
-    //
-   	//Rising Edge Intterupt
-    SET(EICRA,ISC00);
-    SET(EICRA,ISC01);
-    //
-    //activate INTO external interrupt
-    SET(EIMSK,INT0);
-    
-    
+    PCICR = (1 << INT0);
+    EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
     puts("Hello World!");
     _delay_ms(10);
-    
-    
-    //timer config
-    //
-    //Set CTC Bit, so counter will auto-restart, when it compares true to the timervalue
-	SET(TCCR1B,WGM12);
-	//
-	//16-Bit Value continuesly compared to counter register
-	OCR1A = 2000;
-	//
-	//Timer/Counter Interrupt Mask Register has to be set to 1 at OCIE0A, so the interrupt will not be masked
-	SET(TIMSK1,OCIE1A);
-	//
-	//enable interrupts
-	sei();
-	
+
+    sei();
 
     while (1)
     {
