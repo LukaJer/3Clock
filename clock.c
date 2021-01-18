@@ -32,7 +32,16 @@ bool IsGGA = false, Time_Set = false; //technicially GA,
 int GGA_Index;
 char GPS_Data[6];//HHMMSS
 char GPS_Buffer[3];
-char time[3]; //HMS
+int time[3]; //HMS
+
+void convTime(char * char_array, int * int_array)
+{
+	int i=0;
+    for(; i<3; i++){
+        int_array[i] = (char_array[i*2]-48)*10+char_array[i*2+1]-48;
+    }
+    return;
+}
 
 ISR(TIMER1_COMPA_vect)
 {
@@ -69,8 +78,6 @@ ISR(USART_RX_vect) //GPS transmitts data
 		//TIMER: start timer with prescalar: 8
 		SET(TCCR1B,CS11);
 		timer_running = true;
-		
-		
 		}
 		
         printf(" millis = %lu\n", millis);
@@ -147,13 +154,6 @@ const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART
 }
 
 
-void convTime(char * char_array, int * int_array)
-{
-    for(int i; i<3; i++){
-        int_array[i] = (char_array[i*2]-48)*10+char_array[i*2+1]-48;
-    }
-    return 0;
-}
 
 int main()
 {
