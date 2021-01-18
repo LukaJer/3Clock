@@ -55,10 +55,10 @@ ISR(USART_RX_vect) //GPS transmitts data
     if (GGA_Index > 5) //Time data finished (we need 0..5)
     {
         GGA_Index = 0;
-        printf("Time %.6s", GPS_Data);
+        printf("GPSTime %.6s", GPS_Data);
         convTime(GPS_Data, time);
         //printf(" time: %d %d %d;", time[0], time[1], time[2]);
-        printf(" time2: %02d %02d %02d %02d;", time2[0], time2[1], time2[2], time2[3]);
+        printf(" Onboard: %02d %02d %02d %02d;", time2[0], time2[1], time2[2], time2[3]);
         
         if (!timer_running)//Execute only when the first time data is received from the GPS
         {
