@@ -23,7 +23,7 @@
 uint32_t millis = 0;
 bool IsGGA = false, Time_Set = false, timer_running = false;
 ; //technicially GA,
-int GGA_Index;
+int GGA_Index,timeDiff;
 char GPS_Data[6]; //HHMMSS
 char GPS_Buffer[3];
 int time[3];  //HMS
@@ -55,10 +55,10 @@ ISR(USART_RX_vect) //GPS transmitts data
     if (GGA_Index > 5) //Time data finished (we need 0..5)
     {
         GGA_Index = 0;
-        printf("GPSTime %.6s", GPS_Data);
+        //printf("GPSTime %.6s", GPS_Data);
         convTime(GPS_Data, time);
         //printf(" time: %d %d %d;", time[0], time[1], time[2]);
-        printf(" Onboard: %02d %02d %02d %02d;", time2[0], time2[1], time2[2], time2[3]);
+        //printf(" Onboard: %02d %02d %02d %02d;", time2[0], time2[1], time2[2], time2[3]);
         
         if (!timer_running)//Execute only when the first time data is received from the GPS
         {
@@ -68,8 +68,9 @@ ISR(USART_RX_vect) //GPS transmitts data
             time2[1] = time[1];
             time2[2] = time[2]+1; //Very Ugly fix
         }
-        printf(" millis = %lu", millis);
-        printf("  GPSTime-OnBoardTime = %d s\n", time[2]-time2[2]); //only s for now, better with PPS Trigger
+        //printf(" millis = %lu", millis);
+        timeDiff=(time[1]-time2[1])*60+time[2]-time2[2];
+        printf("timeDiff = %d s\n", timeDiff); //only s for now, better with PPS Trigger
         IsGGA = false;
     }
 
@@ -95,6 +96,7 @@ ISR(USART_RX_vect) //GPS transmitts data
         }
     }
 }
+
 
 void timeAddSec()
 {
