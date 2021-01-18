@@ -4,7 +4,7 @@ OBJCOPY=avr-objcopy
 AVRDUDE=avrdude
 CFLAGS=-g -Wall -Os #-mcall-prologues
 PRGRM=stk500v2
-PORT=/dev/ttyUSB0
+PORT=/dev/ttyUSB1
 	
 default:
 	${CC} -mmcu=${MCU} ${CFLAGS} -o main.o clock.c uart.c
@@ -15,7 +15,7 @@ flash:
 	${AVRDUDE} -p ${MCU} -c ${PRGRM}  -P ${PORT} -U flash:w:main.hex:i -F
 
 flasha:
-	${AVRDUDE} -p ${MCU} -c arduino -b 57600 -P ${PORT}  -vv -U flash:w:blink.hex 
+	${AVRDUDE} -c arduino -b 57600 -P ${PORT} -p ${MCU} -vv -U flash:w:blink.hex 
 
 clean:
 	rm -f *.o *.hex

@@ -10,24 +10,30 @@
 #include "uart.h"
 #include <avr/interrupt.h>
 #include <string.h>
-#include <stdint.h>
 //#include <time.h>
+
+//standard integer definitions (ie, uint8_t, int32_t, etc)
+#include <stdint.h>
+
+
+
 
 //Basic bit manipulation macros
 //position y of register x
-#define SET(x, y) x |= (1 << y)                                    //1
-#define CLEAR(x, y) x &= ~(1 << y)                                 //0
-#define READ(x, y) ((0x00 == ((x & (1 << y)) >> y)) ? 0x00 : 0x01) //if(1)
-#define TOGGLE(x, y) (x ^= (1 << y))                               //inverse
+#define SET(x,y) x |= (1 << y) //1
+#define CLEAR(x,y) x &= ~(1<< y) //0
+#define READ(x,y) ((0x00 == ((x & (1<<y))>> y))?0x00:0x01) //if(1)
+#define TOGGLE(x,y) (x ^= (1<<y)) //inverse
 
 uint32_t millis = 0;
-bool IsGGA = false, Time_Set = false, timer_running = false;
-; //technicially GA,
-int GGA_Index,timeDiff;
-char GPS_Data[6]; //HHMMSS
+uint32_t delta = 0;
+bool timer_running = false;
+
+bool IsGGA = false, Time_Set = false; //technicially GA,
+int GGA_Index;
+char GPS_Data[6];//HHMMSS
 char GPS_Buffer[3];
-int time[3];  //HMS
-int time2[4]; //HMSMS
+char time[3]; //HMS
 
 void convTime(char * char_array, char * int_array)
 {
@@ -45,15 +51,7 @@ uint32_t time_to_millis(char * time)
 
 ISR(TIMER1_COMPA_vect)
 {
-    millis++;
-    if (time2[3] == 999)
-    {
-        timeAddSec();
-    }
-    else
-    {
-        time2[3]++;
-    }
+	millis++;
 }
 
 ISR(INT0_vect) //PPS
@@ -68,24 +66,15 @@ ISR(USART_RX_vect) //GPS transmitts data
     //cli();
     if (GGA_Index > 5) //Time data finished (we need 0..5)
     {
-        GGA_Index = 0;
-<<<<<<< HEAD
-        //printf("GPSTime %.6s", GPS_Data);
-        convTime(GPS_Data, time);
-        //printf(" time: %d %d %d;", time[0], time[1], time[2]);
-        //printf(" Onboard: %02d %02d %02d %02d;", time2[0], time2[1], time2[2], time2[3]);
-        
-        if (!timer_running)//Execute only when the first time data is received from the GPS
+    	/*
+        if (!Time_Set) //Init Time
         {
-            SET(TCCR1B, CS11);//TIMER: start timer with prescalar: 8
-            time2[0] = time[0];
-            time2[1] = time[1];
-            time2[2] = time[2]+1; //Very Ugly fix
+            strncpy(time, GPS_Data, 8); //copies 8 chars from time to GPS_Data
+            Time_Set=true;
         }
-        //printf(" millis = %lu", millis);
-        timeDiff=(time[1]-time2[1])*60+time[2]-time2[2];
-        printf("timeDiff = %d s\n", timeDiff); //only s for now, better with PPS Trigger
-=======
+        */
+        
+        GGA_Index = 0;
         //printf("Time %.6s", GPS_Data);
         convTime(GPS_Data, time);
         printf("%d:%d:%d", time[0], time[1], time[2]);
@@ -94,7 +83,22 @@ ISR(USART_RX_vect) //GPS transmitts data
         if(!timer_running){
         millis = time_to_millis(time);
 		//TIMER: start timer with prescalar: 8
+		SET(TCCR1B,CS11);
+		timer_running = true;
+		}
+		
+        printf(" delta_millis = %lu\n", (time_to_millis(time)-millis)-delta);
+        delta = (time_to_millis(time)-millis);
+        IsGGA = false;
     }
+    
+    if (IsGGA) //checks for GA,
+    {
+        if(rec_char==',') IsGGA=false;
+        GPS_Data[GGA_Index] = rec_char; // write the received char into GPS_Data
+        GGA_Index++;
+    }
+    
     else
     {
         GPS_Buffer[0] = GPS_Buffer[1];
@@ -109,23 +113,6 @@ ISR(USART_RX_vect) //GPS transmitts data
             GPS_Buffer[2] = 0;
         }
     }
-}
-
-
-void timeAddSec()
-{
-    time2[3] = 0;
-    (time2[2] == 59) ? timeAddMin() : time2[2]++;
-}
-void timeAddMin()
-{
-    time2[2] = 0;
-    (time2[1] == 59) ? timeAddH() : time2[1]++;
-}
-void timeAddH()
-{
-    time2[1] = 0;
-    (time2[0] == 59) ? time[0] = 0 : time2[0]++;
 }
 
 double getTemp() //Reads and calculates Temperature
@@ -174,17 +161,7 @@ const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART
     return uString;
 }
 
-<<<<<<< HEAD
-void convTime(char *char_array, int *int_array)
-{
-    for (int i = 0; i < 3; i++)
-    {
-        int_array[i] = (char_array[i * 2] - 48) * 10 + char_array[i * 2 + 1] - 48;
-    }
-}
-=======
 
->>>>>>> eedc64318f3686eca262a12511f513ec04698832
 
 int main()
 {
@@ -196,10 +173,21 @@ int main()
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
     puts("Hello World!");
     _delay_ms(10);
-    SET(TCCR1B, WGM12);  //TIMER: Set CTC Bit, so counter will auto-restart, when it compares true to the timervalue
-    OCR1A = 2000;        //TIMER: 16-Bit Value continuesly compared to counter register
-    SET(TIMSK1, OCIE1A); //TIMER: Timer/Counter Interrupt Mask Register has to be set to 1 at OCIE0A, so the interrupt will not be masked
-    sei();               //TIMER: enable interrupts
+    
+    
+    //TIMER: Set CTC Bit, so counter will auto-restart, when it compares true to the timervalue
+	SET(TCCR1B,WGM12);
+	
+	//TIMER: 16-Bit Value continuesly compared to counter register
+	OCR1A = 2000;
+	
+	//TIMER: Timer/Counter Interrupt Mask Register has to be set to 1 at OCIE0A, so the interrupt will not be masked
+	SET(TIMSK1,OCIE1A);
+	
+	//TIMER: enable interrupts
+	sei();
+	
+
     while (1)
     {
         //run temperature compensation
