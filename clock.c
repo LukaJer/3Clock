@@ -1,6 +1,9 @@
+//NOTE: please use avr-gcc options to make printf float work:
+// -Wl,-u,vfprintf -lprintf_flt
+
 #define F_CPU 16000000UL //Set CPU Clock to 16MHz
-#define BAUD 9600
-#define NTC_pin PB0
+#define BAUD 115200
+#define NTC_pin PC0
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -10,54 +13,133 @@
 #include "uart.h"
 #include <avr/interrupt.h>
 #include <string.h>
-//#include <time.h>
-
-//standard integer definitions (ie, uint8_t, int32_t, etc)
 #include <stdint.h>
-
-
-
+//#include <time.h>
 
 //Basic bit manipulation macros
 //position y of register x
-#define SET(x,y) x |= (1 << y) //1
-#define CLEAR(x,y) x &= ~(1<< y) //0
-#define READ(x,y) ((0x00 == ((x & (1<<y))>> y))?0x00:0x01) //if(1)
-#define TOGGLE(x,y) (x ^= (1<<y)) //inverse
+#define SET(x, y) x |= (1 << y)                                    //1
+#define CLEAR(x, y) x &= ~(1 << y)                                 //0
+#define READ(x, y) ((0x00 == ((x & (1 << y)) >> y)) ? 0x00 : 0x01) //if(1)
+#define TOGGLE(x, y) (x ^= (1 << y))                               //inverse
+
+void convTime(char *char_array, int *int_array);
+void timeAddH();
+void timeAddSec();
+void timeAddMin();
+void initTimer();
+void printDigit2(int digit);
+void printDigit4(int digit);
+void printDigit(int digit);
+
+int Ro = 100, B =  3974; //Nominal resistance 100K, Beta constant
+int Rseries = 100;// Series resistor 100K
+float To = 298.15; //nominal temperature, 25degC
 
 uint32_t millis = 0;
+uint32_t millis_ISR = 0;
+uint32_t gps_millis = 0;
 uint32_t delta = 0;
-bool timer_running = false;
-
-bool IsGGA = false, Time_Set = false; //technicially GA,
-int GGA_Index;
-char GPS_Data[6];//HHMMSS
+bool setup = true;
+int counter = 0;
+int BoardTime[4];
+bool IsGGA = false;
+int GGA_Index, timeDiff;
+char GPS_Data[6]; //HHMMSS
+int BoardTime[4];//{H,M,S,MS}  Time calculated from millis (from 16-Bit timer)
 char GPS_Buffer[3];
-char time[3]; //HMS
+int GPSTime[3]; //HMS
 
-void convTime(char * char_array, char * int_array)
-{
-	int i=0;
-    for(; i<3; i++){
-        int_array[i] = (char_array[i*2]-48)*10+char_array[i*2+1]-48;
-    }
-    return;
+
+int adc_read(){
+    
+    //connect to A5
+    SET(ADMUX,MUX2);
+    SET(ADMUX,MUX0);
+    
+    //start conversion
+    SET(ADCSRA,ADSC);
+    
+    //wait while Bit ADSC of Register ADCSRA is enabled
+    while(ADCSRA & (1<<ADSC));
+     
+    //return two bytes
+    return (int)(ADC);
 }
 
-uint32_t time_to_millis(char * time)
+
+float getTemp(int reading)
 {
-	return (((uint32_t)time[0]*60+(uint32_t)time[1])*60+(uint32_t)time[2])*1000;
+	//Read analog outputof NTC module, i.e the voltage across the thermistor
+	float Vi = ((float)reading) * (5.0 / 1023.0);
+	//Convert voltage measured to resistance value
+	//All Resistance are in kilo ohms.
+	float R = (Vi * Rseries) / (5 - Vi);
+	/*Use R value in steinhart and hart equation
+	Calculate temperature value in kelvin*/
+	float T =  1 / ((1 / To) + ((log(R / Ro)) / B));
+	float Tc = T - 273.15; // Converting kelvin to celsius
+	return Tc;
 }
+
+
 
 ISR(TIMER1_COMPA_vect)
 {
-	millis++;
+    millis++;
+    if (BoardTime[3] == 999)
+    {
+        timeAddSec(BoardTime);
+    }
+    else
+    {
+        BoardTime[3]++;
+    }
 }
 
 ISR(INT0_vect) //PPS
 {
-    // user code her
-    // Diff between GPS_Time and Internal_Time
+	sei();//interrupts get automatically disabled when ISR is activated. We want our millis still be updated! This fixes the problem of inconsistent timing caused by printf :))
+	
+    if (setup)
+    {
+        //start timer with prescalar: 8
+        SET(TCCR1B, CS11);
+
+        //start timer with prescalar: 1
+        //SET(TCCR1B,CS10);
+
+        setup = false;
+    }
+    else gps_millis = gps_millis + 1000;
+    
+	timeAddSec(GPSTime);
+
+    if (counter % 1 == 0)
+    {
+    	//main print output every 1s (PPS)
+    	printDigit2(BoardTime[0]);
+    	printf(":");
+    	printDigit2(BoardTime[1]);
+    	printf(":");
+    	printDigit2(BoardTime[2]);
+    	printf(":");
+    	printDigit4(BoardTime[3]);
+        
+        int value = adc_read();
+        printf(" %d", value);
+        float temp = getTemp(value);
+        printf(" %.1f°C", temp);
+        
+        printf(" ");
+        printDigit((gps_millis - millis) - delta);//prints +
+        printf("%d", (gps_millis - millis) - delta);
+        delta = gps_millis - millis;
+        
+        printf("\n");
+        
+    }
+    counter++;
 }
 
 ISR(USART_RX_vect) //GPS transmitts data
@@ -66,39 +148,20 @@ ISR(USART_RX_vect) //GPS transmitts data
     //cli();
     if (GGA_Index > 5) //Time data finished (we need 0..5)
     {
-    	/*
-        if (!Time_Set) //Init Time
-        {
-            strncpy(time, GPS_Data, 8); //copies 8 chars from time to GPS_Data
-            Time_Set=true;
-        }
-        */
-        
         GGA_Index = 0;
-        //printf("Time %.6s", GPS_Data);
-        convTime(GPS_Data, time);
-        printf("%d:%d:%d", time[0], time[1], time[2]);
+        //printf("GPSTime %.6s", GPS_Data);
+        convTime(GPS_Data, BoardTime);
+        //convTime(GPS_Data, GPSTime);
+        UCSR0B &= ~(1 << RXCIE0); //Dsiable UART Interrupt
         
-        //Execute only when the first time data is received from the GPS
-        if(!timer_running){
-        millis = time_to_millis(time);
-		//TIMER: start timer with prescalar: 8
-		SET(TCCR1B,CS11);
-		timer_running = true;
-		}
-		
-        printf(" delta_millis = %lu\n", (time_to_millis(time)-millis)-delta);
-        delta = (time_to_millis(time)-millis);
-        IsGGA = false;
     }
-    
     if (IsGGA) //checks for GA,
     {
-        if(rec_char==',') IsGGA=false;
-        GPS_Data[GGA_Index] = rec_char; // write the received char into GPS_Data
+        if (rec_char == ',')
+            IsGGA = false;
+        GPS_Data[GGA_Index] = rec_char; // write directly to time?
         GGA_Index++;
     }
-    
     else
     {
         GPS_Buffer[0] = GPS_Buffer[1];
@@ -115,100 +178,91 @@ ISR(USART_RX_vect) //GPS transmitts data
     }
 }
 
-double getTemp() //Reads and calculates Temperature
+void timeAddSec(int *Time)
 {
-    //ADC is 10bit
-    /*
-    Needed  or already set in initADC()?
-    ADMUX = (ADMUX & ~(0x1F)) | (0 & 0x1F); //A0 as input 
-    */
-    ADCSRA |= (1 << ADSC);       // Read ADC
-    while (ADCSRA & (1 << ADSC)) // Convert and wait
-    {
-    }
-    /*
-    measurement is stored as (unit16_t) ADCW
-    */
-    //TODO: ADC to Temp conversion
+    Time[3] = 0;
+    (Time[2] == 59) ? timeAddMin() : Time[2]++;
+}
+void timeAddMin(int *Time)
+{
+    Time[2] = 0;
+    (Time[1] == 59) ? timeAddH() : Time[1]++;
+}
+void timeAddH(int *Time)
+{
+    Time[1] = 0;
+    (Time[0] == 23) ? GPSTime[0] = 0 : Time[0]++;
+}
 
-    return 0;
+void convTime(char *char_array, int *int_array)
+{
+	int i = 0;
+    for (; i < 3; i++)
+    {
+        int_array[i] = (char_array[i * 2] - 48) * 10 + char_array[i * 2 + 1] - 48;
+    }
 }
 
 void initADC()
 {
-    ADMUX = (1 << REFS1) | (0 << REFS0);                 // Set internal as Vref
-    ADMUX |= NTC_pin;                                    // Set A0 as input
-    ADCSRA = (1 << ADPS1) | (1 << ADPS0) | (1 << ADPS0); //Frequenxy prescaler 128 (CLK/125kHz)
-    ADCSRA |= (1 << ADEN);                               // Enable ADC
-    ADCSRA |= (1 << ADSC);                               // Read ADC
-    //Dummy Readout seems to be good practice
-    while (ADCSRA & (1 << ADSC)) // Convert and wait
-    {
-    }
-    (void)ADCW; //Dump Dummy ADCW
+    ADMUX = (1<<REFS0);
+    ADCSRA = (1<<ADEN)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0);
 }
 
-const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART; returns a pointer
+void initTimer()
 {
-    uint8_t charlength = 0;
-    char *uString = malloc(length);
-    do
-    {
-        uString[charlength] = getchar();
-        charlength++;
-    } while (uString[charlength - 1] != '\n' && charlength < length);
-    uString[length] = '\0';
-    return uString;
+    //timer config
+    //
+    //Set CTC Bit, so counter will auto-restart, when it compares true to the timervalue
+    SET(TCCR1B, WGM12);
+    //
+    //16-Bit Value continuesly compared to counter register
+    OCR1A = 1990;//2000 without printf
+    //
+    //Timer/Counter Interrupt Mask Register has to be set to 1 at OCIE0A, so the interrupt will not be masked
+    SET(TIMSK1, OCIE1A);
+    //
+    //enable interrupts
 }
 
+void printDigit(int digit)
+{
+	if(digit > 0) printf("+");	
+}
 
+void printDigit2(int digit)
+{
+	if(digit < 10) printf("0%d", digit);
+	else printf("%d", digit);
+}
+
+void printDigit4(int digit)
+{
+	if(digit < 10) printf("000%d", digit);
+	else if(digit < 100) printf("00%d", digit);
+	else if(digit < 1000) printf("0%d", digit);
+	else printf("%d", digit);
+}
 
 int main()
 {
     cli(); //Disable Interrupts
     uart_init();
+    initTimer();//setup timer
+    initADC();//setup ADC
+    
     stdout = &uart_output;
     stdin = &uart_input;
-    PCICR = (1 << INT0);
+    SET(EIMSK,INT0);//set mask
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
-    puts("Hello World!");
+    
+    
+    puts("HH:MM:SS:MSMS ADC TMP    Drift");
     _delay_ms(10);
-    
-    
-    //TIMER: Set CTC Bit, so counter will auto-restart, when it compares true to the timervalue
-	SET(TCCR1B,WGM12);
-	
-	//TIMER: 16-Bit Value continuesly compared to counter register
-	OCR1A = 2000;
-	
-	//TIMER: Timer/Counter Interrupt Mask Register has to be set to 1 at OCIE0A, so the interrupt will not be masked
-	SET(TIMSK1,OCIE1A);
-	
-	//TIMER: enable interrupts
-	sei();
-	
-
+    sei();
     while (1)
     {
         //run temperature compensation
     }
     return 0;
 }
-
-//UART Manual
-/*
-Input:
-char *input = uart_getString(length of String);
-//do something with input
-free(input);
-
-Output:
-puts() or printf()
-*/
-
-//GPSData
-/*
-$GPRMC,235316.000,A,4003.9040,N,10512.5792,W,0.09,144.75,141112,,*19
-$GPGGA,235317.000,4003.9039,N,10512.5793,W,1,08,1.6,1577.9,M,-20.7,M,,0000*5F
-$GPGSA,A,3,22,18,21,06,03,09,24,15,,,,,2.5,1.6,1.9*3E
-*/
