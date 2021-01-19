@@ -94,7 +94,6 @@ ISR(INT0_vect) //PPS
         printf(" %.1f°C", temp);
 
         printf(" ");
-        printDigit((gps_millis - millis) - delta); //prints +
         printf("%ld", (gps_millis - millis) - delta);
         delta = gps_millis - millis;
 
