@@ -2,7 +2,7 @@ MCU=atmega328p
 CC=avr-gcc
 OBJCOPY=avr-objcopy
 AVRDUDE=avrdude
-CFLAGS=-g -Wall -Os #-mcall-prologues
+CFLAGS=-g -Wall -Os -Wl,-u,vfprintf -lprintf_flt#-mcall-prologues
 PRGRM=stk500v2
 PORT=/dev/ttyUSB1
 	
