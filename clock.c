@@ -156,31 +156,17 @@ void adjTimeZone(int *Time, int diff)
 {
     if (diff < 1)
     {
-        if (Time[0] - diff < 0)
-        {
-            Time[0] = Time[0] + 12 + diff;
-        }
-        else
-        {
-            Time[0] += diff;
-        }
+        (Time[0] - diff < 0) ? Time[0] = Time[0] + 12 + diff : Time[0] += diff;
     }
     else
     {
-        if (Time[0] + diff > 23)
-        {
-            Time[0] = Time[0] - 12 - diff;
-        }
-        else
-        {
-            Time[0] += diff;
-        }
+        (Time[0] + diff > 23) ? Time[0] = Time[0] - 12 - diff : Time[0] += diff;
     }
 }
 
 void convTime(char *char_array, int *int_array)
 {
-    int i = 0; //Weird Error when in loop
+    int i = 0; //Weird Error when in brackets
     for (; i < 3; i++)
     {
         int_array[i] = (char_array[i * 2] - 48) * 10 + char_array[i * 2 + 1] - 48;
