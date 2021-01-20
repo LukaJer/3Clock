@@ -92,8 +92,7 @@ ISR(INT0_vect) //PPS
         printf(" %d", value);
         float temp = getTemp(value);
         printf(" %.1d°C", (double)temp);
-
-        printf(" %ld\n", (gps_millis - millis) - delta);
+        printf(" %04d\n", (int)((gps_millis - millis) - delta));
         delta = gps_millis - millis;
     }
     counter++;
@@ -152,8 +151,8 @@ void timeAddH(int *Time)
 
 void convTime(char *char_array, int *int_array)
 {
-    
-    for (int i = 0; i < 3; i++)
+    int i = 0;
+    for (; i < 3; i++)
     {
         int_array[i] = (char_array[i * 2] - 48) * 10 + char_array[i * 2 + 1] - 48;
     }
@@ -205,7 +204,7 @@ void initTimer()
     SET(TCCR1B, WGM12);
     //
     //16-Bit Value continuesly compared to counter register
-    OCR1A = 1990; //2000 without printf
+    OCR1A = 1995; //2000 without printf
     //
     //Timer/Counter Interrupt Mask Register has to be set to 1 at OCIE0A, so the interrupt will not be masked
     SET(TIMSK1, OCIE1A);
@@ -234,3 +233,4 @@ int main()
     }
     return 0;
 }
+
