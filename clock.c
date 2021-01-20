@@ -154,6 +154,7 @@ void timeAddH(int *Time)
 
 void adjTimeZone(int *Time, int diff)
 {
+    /*
     if (diff < 1)
     {
         (Time[0] - diff < 0) ? Time[0] = Time[0] + 12 + diff : Time[0] += diff;
@@ -161,6 +162,29 @@ void adjTimeZone(int *Time, int diff)
     else
     {
         (Time[0] + diff > 23) ? Time[0] = Time[0] - 12 - diff : Time[0] += diff;
+    }
+    */
+    if (diff < 1)
+    {
+        if (Time[0] - diff < 0)
+        {
+            Time[0] = Time[0] + 12 + diff;
+        }
+        else
+        {
+            Time[0] += diff;
+        }
+    }
+    else
+    {
+        if (Time[0] + diff > 23)
+        {
+            Time[0] = Time[0] - 12 - diff;
+        }
+        else
+        {
+            Time[0] += diff;
+        }
     }
 }
 
