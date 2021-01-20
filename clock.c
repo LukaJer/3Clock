@@ -86,7 +86,7 @@ ISR(INT0_vect) //PPS
     if (counter % 1 == 0)
     {
         //main print output every 1s (PPS)
-        printf("%02d:%02d:%02d:%04d  ",BoardTime[0],BoardTime[1],BoardTime[2],BoardTime[3]);
+        printf("%02d:%02d:%02d:%04d",BoardTime[0],BoardTime[1],BoardTime[2],BoardTime[3]);
 
         int value = ADCRead();
         printf(" %d", value);
@@ -94,7 +94,7 @@ ISR(INT0_vect) //PPS
         printf(" %.1f°C", temp);
 
         printf(" ");
-        printf("%ld", (gps_millis - millis) - delta);
+        printf("%04d", (int)((gps_millis - millis) - delta));
         delta = gps_millis - millis;
 
         printf("\n");
@@ -155,8 +155,8 @@ void timeAddH(int *Time)
 
 void convTime(char *char_array, int *int_array)
 {
-    
-    for (int i = 0; i < 3; i++)
+    int i = 0;
+    for (; i < 3; i++)
     {
         int_array[i] = (char_array[i * 2] - 48) * 10 + char_array[i * 2 + 1] - 48;
     }
@@ -237,3 +237,4 @@ int main()
     }
     return 0;
 }
+
