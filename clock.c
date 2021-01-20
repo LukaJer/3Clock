@@ -47,7 +47,7 @@ int GGA_Index, timeDiff;
 char GPS_Data[6]; //HHMMSS
 int BoardTime[4]; //{H,M,S,MS}  Time calculated from millis (from 16-Bit timer)
 char GPS_Buffer[3];
-int GPSTime[3]; //HMS
+int GPSTime[4]; //HMS
 
 
 
@@ -91,13 +91,9 @@ ISR(INT0_vect) //PPS
         int value = ADCRead();
         printf(" %d", value);
         float temp = getTemp(value);
-        printf(" %.1f°C", temp);
-
-        printf(" ");
-        printf("%04d", (int)((gps_millis - millis) - delta));
+        printf(" %.1d°C", (double)temp);
+        printf(" %04d\n", (int)((gps_millis - millis) - delta));
         delta = gps_millis - millis;
-
-        printf("\n");
     }
     counter++;
 }
@@ -112,7 +108,7 @@ ISR(USART_RX_vect) //GPS transmitts data
         //printf("GPSTime %.6s", GPS_Data);
         convTime(GPS_Data, BoardTime);
         convTime(GPS_Data, GPSTime);
-        UCSR0B &= ~(1 << RXCIE0); //Dsiable UART Interrupt
+        UCSR0B &= ~(1 << RXCIE0); //Disable UART Interrupt
     }
     if (IsGGA) //checks for GA,
     {
@@ -196,7 +192,7 @@ float getTemp(int reading)
 
 void initADC()
 {
-    ADMUX = (1 << REFS0); // -set VRef
+    ADMUX = (1 << REFS0); // set VRef
     ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0); //Enable ADC & set prescaler to 128
 }
 
