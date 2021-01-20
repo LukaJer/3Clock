@@ -22,6 +22,7 @@
 #define CLEAR(x, y) x &= ~(1 << y)                                 //0
 #define READ(x, y) ((0x00 == ((x & (1 << y)) >> y)) ? 0x00 : 0x01) //if(1)
 #define TOGGLE(x, y) (x ^= (1 << y))                               //inverse
+#define UTC 1
 
 void convTime(char *char_array, int *int_array);
 void timeAddH();
@@ -30,6 +31,7 @@ void timeAddMin();
 void initTimer();
 int ADCRead();
 float getTemp();
+void adjTimeZone(int *Time, int diff);
 
 int Ro = 100, B = 3974; //Nominal resistance 100K, Beta constant
 int Rseries = 100;      // Series resistor 100K
@@ -48,8 +50,7 @@ char GPS_Data[6]; //HHMMSS
 int BoardTime[4]; //{H,M,S,MS}  Time calculated from millis (from 16-Bit timer)
 char GPS_Buffer[3];
 int GPSTime[4]; //HMS
-
-
+int adjOCR1A;
 
 ISR(TIMER1_COMPA_vect)
 {
@@ -83,15 +84,15 @@ ISR(INT0_vect) //PPS
 
     timeAddSec(GPSTime);
 
-    if (counter % 1 == 0)
+    if (counter % 5 == 0)
     {
         //main print output every 1s (PPS)
-        printf("%02d:%02d:%02d:%04d",BoardTime[0],BoardTime[1],BoardTime[2],BoardTime[3]);
+        printf("%02d:%02d:%02d:%04d", BoardTime[0], BoardTime[1], BoardTime[2], BoardTime[3]);
 
         int value = ADCRead();
         printf(" %d", value);
         float temp = getTemp(value);
-        printf(" %.1d°C", (double)temp);
+        printf(" %.1f°C", temp);
         printf(" %04d\n", (int)((gps_millis - millis) - delta));
         delta = gps_millis - millis;
     }
@@ -108,6 +109,8 @@ ISR(USART_RX_vect) //GPS transmitts data
         //printf("GPSTime %.6s", GPS_Data);
         convTime(GPS_Data, BoardTime);
         convTime(GPS_Data, GPSTime);
+        adjTimeZone(GPSTime, UTC);
+        adjTimeZone(BoardTime, UTC);
         UCSR0B &= ~(1 << RXCIE0); //Disable UART Interrupt
     }
     if (IsGGA) //checks for GA,
@@ -149,9 +152,45 @@ void timeAddH(int *Time)
     (Time[0] == 23) ? GPSTime[0] = 0 : Time[0]++;
 }
 
+void adjTimeZone(int *Time, int diff)
+{
+    /*
+    if (diff < 1)
+    {
+        (Time[0] - diff < 0) ? Time[0] = Time[0] + 12 + diff : Time[0] += diff;
+    }
+    else
+    {
+        (Time[0] + diff > 23) ? Time[0] = Time[0] - 12 - diff : Time[0] += diff;
+    }
+    */
+    if (diff < 1)
+    {
+        if (Time[0] - diff < 0)
+        {
+            Time[0] = Time[0] + 12 + diff;
+        }
+        else
+        {
+            Time[0] += diff;
+        }
+    }
+    else
+    {
+        if (Time[0] + diff > 23)
+        {
+            Time[0] = Time[0] - 12 - diff;
+        }
+        else
+        {
+            Time[0] += diff;
+        }
+    }
+}
+
 void convTime(char *char_array, int *int_array)
 {
-    int i = 0;
+    int i = 0; //Weird Error when in brackets
     for (; i < 3; i++)
     {
         int_array[i] = (char_array[i * 2] - 48) * 10 + char_array[i * 2 + 1] - 48;
@@ -162,7 +201,7 @@ int ADCRead()
 {
 
     //connect to A5 : ADMUX |= (1<<MUX2) | (1<<MUX2)
-    SET(ADMUX, MUX2); 
+    SET(ADMUX, MUX2);
     SET(ADMUX, MUX0);
 
     //start conversion : ADCSRA |= (1<<ADSC )
@@ -192,7 +231,7 @@ float getTemp(int reading)
 
 void initADC()
 {
-    ADMUX = (1 << REFS0); // set VRef
+    ADMUX = (1 << REFS0);                                              // set VRef
     ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0); //Enable ADC & set prescaler to 128
 }
 
@@ -227,10 +266,20 @@ int main()
     puts("HH:MM:SS:MSMS ADC TMP    Drift");
     _delay_ms(10);
     sei();
+    int driftperC, X; //Placeholder
     while (1)
+        ;
+
+    while (0)
     {
         //run temperature compensation
+        if (counter == 300) //Every 5s
+        {
+            counter = 0;
+            adjOCR1A = getTemp(ADCRead()) * driftperC + X;
+            adjOCR1A = round(adjOCR1A);
+            OCR1A = adjOCR1A;
+        }
     }
     return 0;
 }
-
