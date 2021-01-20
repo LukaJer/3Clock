@@ -1,6 +1,3 @@
-//NOTE: please use avr-gcc options to make printf float work:
-// -Wl,-u,vfprintf -lprintf_flt
-
 #define F_CPU 16000000UL //Set CPU Clock to 16MHz
 #define BAUD 115200
 #define NTC_pin PC0
