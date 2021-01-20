@@ -208,7 +208,7 @@ void initTimer()
     SET(TCCR1B, WGM12);
     //
     //16-Bit Value continuesly compared to counter register
-    OCR1A = 1990; //2000 without printf
+    OCR1A = 1995; //2000 without printf
     //
     //Timer/Counter Interrupt Mask Register has to be set to 1 at OCIE0A, so the interrupt will not be masked
     SET(TIMSK1, OCIE1A);
