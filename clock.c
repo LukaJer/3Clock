@@ -58,45 +58,31 @@ ISR(TIMER1_COMPA_vect)
     if (BoardTime[3] == 999)
     {
         timeAddSec(BoardTime);
+        counter++;
     }
     else
     {
         BoardTime[3]++;
     }
-}
 
-ISR(INT0_vect) //PPS
-{
-    sei(); //interrupts get automatically disabled when ISR is activated. We want our millis still be updated! This fixes the problem of inconsistent timing caused by printf :))
-
-    if (setup)
+    if (counter % 5 == 0)//main print output every 5s
     {
-        //start timer with prescalar: 8
-        SET(TCCR1B, CS11);
-
-        //start timer with prescalar: 1
-        //SET(TCCR1B,CS10);
-
-        setup = false;
-    }
-    else
-        gps_millis = gps_millis + 1000;
-
-    timeAddSec(GPSTime);
-
-    if (counter % 5 == 0)
-    {
-        //main print output every 1s (PPS)
+         sei(); //interrupts get reenabled althought still in ISR. We want our millis still be updated! This fixes the problem of inconsistent timing caused by printf :))
+        //main print output every 1s
         printf("%02d:%02d:%02d:%04d", BoardTime[0], BoardTime[1], BoardTime[2], BoardTime[3]);
-
         int value = ADCRead();
         printf(" %d", value);
         float temp = getTemp(value);
         printf(" %.1f°C", temp);
-        printf(" %04d\n", (int)((gps_millis - millis) - delta));
-        delta = gps_millis - millis;
     }
-    counter++;
+}
+
+ISR(INT0_vect) //PPS
+{
+    timeAddSec(GPSTime);
+    gps_millis = gps_millis + 1000;
+    printf(" %04d\n", (int)((gps_millis - millis) - delta));
+    delta = gps_millis - millis;
 }
 
 ISR(USART_RX_vect) //GPS transmitts data
@@ -112,6 +98,9 @@ ISR(USART_RX_vect) //GPS transmitts data
         adjTimeZone(GPSTime, UTC);
         adjTimeZone(BoardTime, UTC);
         UCSR0B &= ~(1 << RXCIE0); //Disable UART Interrupt
+        PCICR = (1 << INT0);      // Enable PPS Interrupt
+        initTimer();              //Enables Timer
+        SET(TCCR1B, CS11);        //Starts timer with prescalar 8
     }
     if (IsGGA) //checks for GA,
     {
@@ -255,12 +244,12 @@ int main()
 {
     cli(); //Disable Interrupts
     uart_init();
-    initTimer(); //setup timer
-    initADC();   //setup ADC
+    //initTimer(); //setup timer
+    initADC(); //setup ADC
 
     stdout = &uart_output;
     stdin = &uart_input;
-    SET(EIMSK, INT0);                    //set mask
+    //SET(EIMSK, INT0);                    //set mask
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
 
     puts("HH:MM:SS:MSMS ADC TMP    Drift");
