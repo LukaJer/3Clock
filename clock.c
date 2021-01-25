@@ -51,6 +51,7 @@ int BoardTime[4]; //{H,M,S,MS}  Time calculated from millis (from 16-Bit timer)
 char GPS_Buffer[3];
 int GPSTime[4]; //HMS
 int adjOCR1A;
+int delta1;
 
 ISR(TIMER1_COMPA_vect)
 {
@@ -65,24 +66,31 @@ ISR(TIMER1_COMPA_vect)
         BoardTime[3]++;
     }
 
-    if (counter % 5 == 0)//main print output every 5s
+    if (counter % 5 == 0) //main print output every 5s
     {
-         sei(); //interrupts get reenabled althought still in ISR. We want our millis still be updated! This fixes the problem of inconsistent timing caused by printf :))
-        //main print output every 1s
+        sei(); //interrupts get reenabled althought still in ISR. We want our millis still be updated! This fixes the problem of inconsistent timing caused by printf :))
         printf("%02d:%02d:%02d:%04d", BoardTime[0], BoardTime[1], BoardTime[2], BoardTime[3]);
         int value = ADCRead();
         printf(" %d", value);
         float temp = getTemp(value);
-        printf(" %.1f°C", temp);
+        printf(" %.1f°C\n", temp);
     }
 }
 
 ISR(INT0_vect) //PPS
 {
     timeAddSec(GPSTime);
+    /*
     gps_millis = gps_millis + 1000;
     printf(" %04d\n", (int)((gps_millis - millis) - delta));
     delta = gps_millis - millis;
+    */
+   sei();
+    delta1 = (BoardTime[0] - GPSTime[0]) * 3600 * 1000; //HoursDelta in ms
+    delta1 += (BoardTime[1] - GPSTime[1]) * 60 * 1000; //MinutesDelta in ms
+    delta1 += (BoardTime[2] - GPSTime[2]) * 1000; //SecondsDelta in ms
+    delta1 += BoardTime[3]; //MillisecondsDelta in ms
+    printf("TimeDelta: %d\n", delta1);
 }
 
 ISR(USART_RX_vect) //GPS transmitts data
@@ -252,7 +260,7 @@ int main()
     //SET(EIMSK, INT0);                    //set mask
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
 
-    puts("HH:MM:SS:MSMS ADC TMP    Drift");
+    puts("HH:MM:SS:MSMS ADC TMP");
     _delay_ms(10);
     sei();
     int driftperC, X; //Placeholder
