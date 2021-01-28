@@ -257,7 +257,7 @@ int main()
 
     stdout = &uart_output;
     stdin = &uart_input;
-    SET(EIMSK, INT0);                    //set mask
+    SET(EIMSK, INT0);     //EIMSK |= (1 << INT0);  enable INT0 interrupt
     EICRA = (1 << ISC00) | (1 << ISC01); //Rising Edge Intterupt
 
     puts("HH:MM:SS:MSMS ADC TMP    Drift");
