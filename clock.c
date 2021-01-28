@@ -248,6 +248,19 @@ void initTimer()
     //enable interrupts
 }
 
+const char *uart_getString(uint8_t length) //Reads String=Char[length] from UART; returns a pointer
+{
+    uint8_t charlength = 0;
+    char *uString = malloc(length);
+    do
+    {
+        uString[charlength] = getchar();
+        charlength++;
+    } while (uString[charlength - 1] != '\n' && charlength < length);
+    uString[length] = '\0';
+    return uString;
+}
+
 int main()
 {
     cli(); //Disable Interrupts
