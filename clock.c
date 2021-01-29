@@ -29,6 +29,7 @@ void initTimer();
 int ADCRead();
 float getTemp();
 void adjTimeZone(int *Time, int diff);
+const char *uart_getString(uint8_t length);
 
 int Ro = 100, B = 3974; //Nominal resistance 100K, Beta constant
 int Rseries = 100;      // Series resistor 100K
