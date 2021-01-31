@@ -21,11 +21,12 @@
 #define TOGGLE(x, y) (x ^= (1 << y))                               //inverse
 #define UTC 1
 
+void initTimer();
+void initADC();
 void convTime(char *char_array, int *int_array);
 void timeAddH();
 void timeAddSec();
 void timeAddMin();
-void initTimer();
 int ADCRead();
 float getTemp();
 void adjTimeZone(int *Time, int diff);
@@ -100,7 +101,6 @@ ISR(INT0_vect) //PPS
 ISR(USART_RX_vect) //GPS transmitts data
 {
     char rec_char = UDR0;
-    //cli();
     if (GGA_Index > 5) //Time data finished (we need 0..5)
     {
         GGA_Index = 0;
