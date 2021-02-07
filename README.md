@@ -30,4 +30,6 @@ Commands to use:
   * commit
   * push
 
-
+possible roadmap:
+- [ ] volatile for asynchronus variable change  
+- [ ] make BoardTime main Clock e.g. for output (already in testing branch)
