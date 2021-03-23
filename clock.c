@@ -281,10 +281,10 @@ int main()
     while (1)
         ;
 
-    while (0)
+    while (0) //Does not run as driftperC and X are still unknown
     {
         //run temperature compensation
-        if (counter == 300) //Every 5s
+        if (counter == 60) //Every 1m
         {
             counter = 0;
             adjOCR1A = getTemp(ADCRead()) * driftperC + X;
